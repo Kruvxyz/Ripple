@@ -1,0 +1,97 @@
+version: '3.8'
+
+services:
+  server:
+    build: ./server  # Path to server Dockerfile
+    ports:
+      - "5050:5050"
+    volumes:
+      - ./shared:/app/shared
+    environment:
+      - DONT_USE_DOT_ENV=1
+      - FLASK_ENV=development
+      # Remote MySQL
+      - MYSQL_REMOTE_HOST=mysql
+      - MYSQL_REMOTE_DATABASE=stocks_db
+      - MYSQL_REMOTE_USER=stocks_user
+      - MYSQL_REMOTE_PASSWORD=securepassword
+    depends_on:
+      - scheduler
+      - mysql
+    networks:
+      - app-network
+
+  scheduler:
+    build: ./scheduler  # Path to server Dockerfile
+    # ports:
+    #   - "5050:5050"
+    volumes:
+      - ./shared:/app/shared
+    environment:
+      - DONT_USE_DOT_ENV=1
+      - FLASK_ENV=development
+      # Local MySQL
+      - MYSQL_HOST=ripple_db
+      - MYSQL_DATABASE=ripple_db
+      - MYSQL_USER=ripple_user
+      - MYSQL_PASSWORD=ripple_password
+      # Remote MySQL
+      - MYSQL_REMOTE_HOST=mysql
+      - MYSQL_REMOTE_DATABASE=stocks_db
+      - MYSQL_REMOTE_USER=stocks_user
+      - MYSQL_REMOTE_PASSWORD=securepassword
+    depends_on:
+      - ripple_db
+      - mysql
+    networks:
+      - app-network
+
+  app:
+    build: ./app  # Path to app Dockerfile
+    ports:
+      - "80:3000"
+    volumes:
+      - ./app:/app
+    environment:
+      - REACT_APP_SERVER_ADDRESS=http://localhost:5050
+      - CHOKIDAR_USEPOLLING=true  # To help with file system watching in Docker
+    depends_on:
+      - server
+
+  ripple_db:
+    image: mysql:8.0 
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: ripple_db
+      MYSQL_USER: ripple_user
+      MYSQL_PASSWORD: ripple_password
+    # ports:
+    #   - "3306:3306"
+    volumes:
+      - ripple_datadrive:/var/lib/mysql
+    networks:
+      - app-network
+
+  mysql:
+    image: mysql:8.0 
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: stocks_db
+      MYSQL_USER: stocks_user
+      MYSQL_PASSWORD: securepassword
+    # ports:
+    #   - "3306:3306"
+    volumes:
+      - mysql_datadrive:/var/lib/mysql
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  ripple_datadrive:
+  mysql_datadrive:

@@ -1,0 +1,26 @@
+.App {
+  background-color:green;
+  padding: 0px;
+  margin: 0px;
+  display: flex;
+  flex-direction: column;
+}
+
+.menu{
+  background-color: red;
+}
+
+.container {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  background-color: yellow;
+}
+
+.routine {
+  background-color: aqua;
+  width: 250px;
+  height: 350px;
+  border-radius: 20px;
+  margin: 10px;
+}

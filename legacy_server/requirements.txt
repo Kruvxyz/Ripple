@@ -1,0 +1,12 @@
+selenium==4.21.0
+yfinance==0.2.43
+# langchain==0.2.14
+# langchain_community==0.2.12
+# langchain_openai==0.1.21
+# openai==1.40.6
+Flask==3.0.3
+Flask-Cors==3.0.10
+python-dotenv==1.0.1
+# Flask-SQLAlchemy==3.1.1
+mysqlclient==2.1.1
+SQLAlchemy==2.0.35
