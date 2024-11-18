@@ -14,6 +14,7 @@ class Task:
         self.update_task_status = None
         self.update_task_error = None
         self.update_task_completed = None
+        self.previous_task_instance = None
 
     def run(self) -> bool:
         try:
@@ -48,6 +49,7 @@ class Task:
 
     def release(self):
         id = self.id # logging only
+        self.previous_task_instance = self.task_db_instance
         self.id = None
         self.task_db_instance = None
         self.update_task_status = None
@@ -57,4 +59,9 @@ class Task:
         self.is_set = False
         logger.info(f"Task {id} : Task released")
 
+    def get_instance(self):
+        if self.task_db_instance is None:
+            return self.previous_task_instance
+        return self.task_db_instance
+    
 dummy_task = Task()

@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS, cross_origin
 import logging
-from shared import session, Message, get_latest_pending_command, update_command_status, get_routine_status, get_routine_list
+from shared import session, Message, get_latest_pending_command, update_command_status, get_routine_status, get_routine_list, get_task_status
 import sys
 
 # Set logger configuration
@@ -99,7 +99,10 @@ def routine_list():
 @app.route("/routine/status", methods=["POST"])
 @cross_origin()
 def routine_status():
-    return jsonify({"status": get_routine_status(request.json.get("routine_name",""))})
+    return jsonify({
+        "status": get_routine_status(request.json.get("routine_name","")),
+        "task_status": get_task_status(request.json.get("routine_name",""))
+    })
 
 # Run server if the script is run directly
 if __name__ == "__main__":

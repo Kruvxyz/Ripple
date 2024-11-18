@@ -1,6 +1,6 @@
 import asyncio
 from collections.abc import Callable
-from shared import session, Message, get_latest_pending_command, update_routine_status, update_command_status, get_routine_status
+from shared import session, Message, get_latest_pending_command, update_routine_status, update_command_status, get_routine_status, update_task_status, get_task_status
 # from Routine import Routine
 # from routines.system.routines_managment import gen_routines_managment_routine
 import logging
@@ -144,6 +144,14 @@ class RoutineManager:
                 if routine.get_status() != get_routine_status(routine.name):
                     logger.info(f"Routine status: {routine.name}, {routine.get_status()}")
                     self.update_routine_status(routine.name, routine.get_status(), routine.get_error())
+
+                logger.info(f"Routine task status: {routine.name}, {routine.task.status}")
+                routine_task_instance = routine.task.get_instance()
+                if routine_task_instance is not None:
+                    latest_task_status = get_task_status(routine.name, routine.current_task_db_instance.id)
+                    if latest_task_status is None or latest_task_status.status != routine_task_instance.status:
+                        logger.info(f"Task status update: {routine.name}, {routine.current_task_db_instance.id}, {routine.current_task_db_instance.status}, {routine.current_task_db_instance.error}")
+                        update_task_status(routine.name, routine.current_task_db_instance.id, routine.current_task_db_instance.status, routine.current_task_db_instance.error)
 
             logger.info("Routine Manager: Get commands")
             command = get_latest_pending_command()
