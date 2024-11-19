@@ -84,6 +84,7 @@ class Routine:
         return self.interval
 
     def get_status(self) -> Optional[str]:
+        logger.info(f"Routine {self.name} : Getting status from routine: {self.routine}")
         if self.routine is not None:
             return self.routine.status
         return None
