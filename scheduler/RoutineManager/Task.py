@@ -21,10 +21,9 @@ class Task:
             self.status = TaskStatus.RUNNING
             print("dummy task running")
             self.update_task_status(TaskInstanceStatus.RUNNING)
-            time.sleep(100)
+            time.sleep(30)
             print("dummy task is done")
             self.update_task_completed()
-
             return True if random.randint(0, 1) == 1 else False
         
         except Exception as e:

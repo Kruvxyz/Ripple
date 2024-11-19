@@ -101,12 +101,14 @@ def routine_list():
 def routine_status():
     num_tasks = request.json.get("num_tasks", 5)
     routine_name = request.json.get("routine_name","")
+    tasks = get_tasks(routine_name)
+    logger.info(f"Getting status for routine {routine_name} with {num_tasks} tasks: {tasks}")
     return jsonify({
         "status": get_routine_status(routine_name),
         "tasks": [{
-            "name": message.id,
+            "name": message.response,
             "status": message.status
-        } for message in get_tasks(routine_name)],
+        } for message in tasks],
     })
 
 # Run server if the script is run directly

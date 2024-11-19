@@ -11,6 +11,8 @@ from .Status import RoutineStatus
 
 logger = logging.getLogger(__name__)
 
+TIME_TO_SLEEP = 1 # 1 second
+
 def singleton(cls):
     instances = {}
     def get_instance(*args, **kwargs):
@@ -147,19 +149,20 @@ class RoutineManager:
 
                 logger.info(f"Routine task status: {routine.name}, {routine.task.status}")
                 routine_task_instance = routine.task.get_instance()
+                logger.info(f"Routine task instance: {routine.name}, {routine_task_instance}")
                 if routine_task_instance is not None:
                     last_task = get_task(routine.name, routine_task_instance.id)
                     latest_task_status = None if not last_task else last_task.status
                     if latest_task_status is None or latest_task_status != routine_task_instance.status:
-                        logger.info(f"Task status update: {routine.name}, {routine.current_task_db_instance}")
-                        update_task_status(routine.name, routine.current_task_db_instance.id, routine.current_task_db_instance.status, routine.current_task_db_instance.error)
+                        logger.info(f"Task status update: {routine.name}, {routine_task_instance}")
+                        update_task_status(routine.name, routine_task_instance.id, routine_task_instance.status, routine_task_instance.error)
 
             logger.info("Routine Manager: Get commands")
             command = get_latest_pending_command()
             logger.info(f"command : {command}")
             if command is None:
                 logger.info("No new command")
-                await asyncio.sleep(60)
+                await asyncio.sleep(TIME_TO_SLEEP)
                 continue
 
             if command.routine not in [routine.name for routine in self.routines]:

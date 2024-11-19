@@ -83,8 +83,10 @@ class Routine:
     def calculate_sleep_preiod(self) -> int:
         return self.interval
 
-    def get_status(self):
-        return self.routine.status
+    def get_status(self) -> Optional[str]:
+        if self.routine is not None:
+            return self.routine.status
+        return None
     
     def get_task_status(self) -> Optional[str]:
         #TODO: implement
@@ -143,6 +145,9 @@ class Routine:
                 self.set_new_task()
                 await self.run_and_wait_task_at_thread_pool_executor()
                 logger.info(f"Routine {self.name} : loop completed")
+
+                await asyncio.sleep(self.calculate_sleep_preiod()) #FIXME: remove magic number
+
 
             except Exception as e:
                 if self.num_retries >= self.retry_limit:

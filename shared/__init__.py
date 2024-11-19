@@ -179,24 +179,15 @@ def update_routine_status(
 def get_tasks_id(routine_name: str, length: int = 1) -> List[int]:
     try:
         logger.info(f"get_tasks_id : Getting task for {routine_name}")
-        messages = session.query(
-            Message
+        ids = session.query(
+            distinct(cast(Message.response, Integer))
         ).filter(
             Message.sender == "scheduler",
             Message.routine == routine_name, 
             Message.command == "task"
-        ).order_by(Message.timestamp.desc()).all()
-        
-
-        ids = []
-        for message in messages:
-            if len(ids) >= length:
-                break
-            if message.response not in ids:
-                ids.append(int(message.response))
-
+        ).order_by(cast(Message.response, Integer).desc()).limit(length).all()
         logger.info(f"get_tasks_id : Got task for {routine_name}: {ids}")
-        return ids
+        return [id[0] for id in ids]
 
     except SQLAlchemyError as e:
         # Catch SQLAlchemyError and rollback to reset the session
