@@ -208,15 +208,10 @@ def get_tasks_id(routine_name: str, length: int = 1) -> List[int]:
     
     return None
 
-def get_task_status(
-        routine_name: str, 
-        task_id: Optional[int] = None
-    ) -> Optional[Message]:
-    if task_id is None:
-        task_id = get_tasks_id(routine_name)
-        task_id = task_id[0] if task_id else None
-        if task_id is None:
-            return None
+def get_task(
+        routine_name: str,
+        task_id: int
+) -> Optional[Message]: 
     try:
         logger.info(f"get_task_status : Getting task status for {routine_name} and task {task_id}")
         message = session.query(Message).filter(
@@ -226,16 +221,68 @@ def get_task_status(
             Message.response == str(task_id)
         ).order_by(Message.timestamp.desc()).first()
         logger.info(f"get_task_status : Got task status for {routine_name} and task {task_id}: {message}")
-        if message:
-            return message.status
+        return message
+
+    except SQLAlchemyError as e:
+        # Catch SQLAlchemyError and rollback to reset the session
+        logger.error("get_task_status : SQLAlchemyError occurred:", e)
+        session.rollback()
+
+    except Exception as e:
+        logger.error(f"get_task_status : Error in getting task status for {routine_name}: {e}")
+    
+    return None
+
+def get_tasks(
+        routine_name: str, 
+        num_tasks: int = 5,
+    ) -> Optional[List[Message]]:        
+    tasks_ids = get_tasks_id(routine_name, num_tasks)
+    try:
+        output = []
+        logger.info(f"get_tasks_status : Getting task status for {routine_name} and task {tasks_ids}")
+        for task_id in tasks_ids:
+            message = get_task(routine_name, task_id)
+            logger.info(f"get_tasks_status : Got task status for {routine_name} and task {task_id}: {message}")
+            if message:
+                output.append(message)
+        return output
+    
+    except SQLAlchemyError as e:
+        # Catch SQLAlchemyError and rollback to reset the session
+        logger.error("get_tasks_status : SQLAlchemyError occurred:", e)
+        session.rollback()
+    except Exception as e:
+        # logger.error(f"get_tasks_status : Error in updating task status for {routine_name} to status: {new_status} and error {error}: {e}")
+        logger.error(f"get_tasks_status : Error in getting task status for {routine_name}: {e}")
+    
+    return None
+
+def get_task_status(
+        routine_name: str, 
+        num_tasks: int = 5,
+    ) -> Optional[Message]:        
+    tasks_ids = get_tasks_id(routine_name, num_tasks)
+    if not tasks_ids:
+        logger.info(f"get_task_status : No tasks found for {routine_name}")
         return None
+    try:
+        logger.info(f"get_task_status : Getting task status for {routine_name} and task {tasks_ids}")
+        output = []
+        for task_id in tasks_ids:
+            message = get_task(routine_name, task_id)
+            logger.info(f"get_task_status : Got task status for {routine_name} and task {task_id}: {message}")
+            if message:
+                output.append((task_id, message.status))
+        return output
     
     except SQLAlchemyError as e:
         # Catch SQLAlchemyError and rollback to reset the session
         logger.error("get_task_status : SQLAlchemyError occurred:", e)
         session.rollback()
     except Exception as e:
-        logger.error(f"get_task_status : Error in updating task status for {routine_name} to status: {new_status} and error {error}: {e}")
+        # logger.error(f"get_task_status : Error in updating task status for {routine_name} to status: {new_status} and error {error}: {e}")
+        logger.error(f"get_task_status : Error in getting task status for {routine_name}: {e}")
     return None
     
         

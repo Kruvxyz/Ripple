@@ -1,8 +1,10 @@
 import React, {useState, useEffect} from 'react';
+import Task from './Task';
 import 'bootstrap-icons/font/bootstrap-icons.css';
 
 function Routine(props) {
     const [status, setStatus] = useState("");
+    const [tasks, setTasks] = useState([]);
 
     let requestStatus = {
         method: 'POST',
@@ -41,12 +43,13 @@ function Routine(props) {
         .then(response => {
             console.log(response)
             setStatus(response.status);
+            setTasks(response.tasks);
         }).catch(err=>console.log(err));
     }
     useEffect(()=>{
         const id = setInterval(() => {
             updateStatus();
-        }, 500);
+        }, 30000);
         return () => clearInterval(id);
 
     },[]);
@@ -61,6 +64,7 @@ function Routine(props) {
             <h1 className='routine-header'>{props.name}</h1>
             <p>{props.description}</p>
             <div className='routine-status'>{status}</div>
+            <div className='routine-tasks'>{tasks && tasks.map((task)=><Task name={task.name} status={task.status} />)}</div>
             <i onClick={sendCommand} name="cancel" className="bi bi-pause-circle-fill"></i>
             <i onClick={sendCommand} name="start" className="bi bi-play-circle-fill"></i>
         </div>
