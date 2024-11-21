@@ -4,7 +4,7 @@ import os
 import logging
 import time
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import sessionmaker, relationship, Session
+from sqlalchemy.orm import sessionmaker, scoped_session, Session
 from sqlalchemy import create_engine, exc, Engine
 from typing import Optional, Tuple
 from RoutineManager.Status import RoutineStatus, TaskInstanceStatus 
@@ -48,8 +48,10 @@ def generate_engine(retries=5, delay=2):
             time.sleep(delay)
     raise Exception("Could not connect to the database after several attempts.")
 
-def generate_session(engine: Engine) -> Session:
-    return sessionmaker(bind=engine)()
+def generate_session(engine: Engine):
+    session_factory = sessionmaker(bind=engine)
+    Session = scoped_session(session_factory)  # Thread-safe session
+    return Session()
 
 def init_db() -> None:
     engine = generate_engine()
@@ -70,13 +72,21 @@ def get_routine(name: str) -> Optional[Routine]:
         logger.error("get routine - Error occurred:", e)
     finally:
         routine_session.close()
+        engine.dispose()
     return None
 
 def add_routine(name: str, description: str, condition_function: Optional[str]=None, condition_function_args: Optional[str]=None, retry_delay: int=5*60, retry_limit: int=5) -> Routine:
     engine = generate_engine()
     routine_session = generate_session(engine)
     try:
-        routine = Routine(name=name, description=description, condition_function=condition_function, condition_function_args=condition_function_args, retry_delay=retry_delay, retry_limit=retry_limit)
+        routine = Routine(
+            name=name, 
+            description=description, 
+            # condition_function=condition_function, 
+            # condition_function_args=condition_function_args, 
+            retry_delay=retry_delay, 
+            retry_limit=retry_limit
+        )
         routine_session.add(routine)
         routine_session.commit()
         return routine
@@ -87,6 +97,7 @@ def add_routine(name: str, description: str, condition_function: Optional[str]=N
         logger.error("add routine - Error occurred:", e)
     finally:
         routine_session.close()
+        engine.dispose()
     return None
 
 def gen_routine_handlers(routine_name: str) -> Tuple[
@@ -182,7 +193,7 @@ def gen_routine_handlers(routine_name: str) -> Tuple[
             logger.error("create_new_task | Error occurred:", e)
         return None
     
-    def gen_update_task(task: Task):
+    def gen_task_handlers(task: Task):
         def update_task_status(status: str) -> None:
             try:
                 logger.info(f"update_task_status: Updating status of task {task.id} to {status}")
@@ -226,4 +237,4 @@ def gen_routine_handlers(routine_name: str) -> Tuple[
 
         return update_task_status, update_task_error, update_task_completed
 
-    return session, gen_routine, update_status, update_error, create_new_task, gen_update_task
+    return session, gen_routine, update_status, update_error, create_new_task, gen_task_handlers

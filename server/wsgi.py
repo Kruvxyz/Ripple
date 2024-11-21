@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS, cross_origin
 import logging
-from shared import session, Message, get_latest_pending_command, update_command_status, get_routine_status, get_routine_list, get_tasks, get_task_status
+from shared import send_command, Message, get_latest_pending_command, update_command_status, get_routine_status, get_routine_list, get_tasks, get_task_status
 import sys
 
 # Set logger configuration
@@ -19,12 +19,12 @@ app = Flask(__name__)
 cors = CORS(app)
 
 @app.route("/ping", methods=["GET", "POST"])
-@cross_origin()
+@cross_origin(origins="http://localhost")
 def ping():
     return "pong"
 
 @app.route("/routine/command", methods=["POST"])
-@cross_origin()
+@cross_origin(origins="http://localhost")
 def routine_command():
     data = request.json
     logger.info(f"Received command: {data}")
@@ -40,24 +40,19 @@ def routine_command():
     # Validate the routine
 
     # Add the command to the queue
-    try:
-        logger.info(f"Adding {data.get('routine_name','')} to queue")
-        session.add(Message("flask", data.get('routine_name',''), data["command"]))
-        session.commit()
-        logger.info(f"Added {data.get('routine_name','')} to queue")
+    res = send_command(data.get("routine_name", "None"), data.get("command", "None"))
+    if res:
         return jsonify({
             "status": "ok"
         })
-    except Exception as e: 
-        logger.error(e)
-        session.rollback()
+    else:
         return jsonify({
-            "status": "error",  
-            "error": e
+            "status": "error",
+            "error": "Failed to send command"
         })
 
 @app.route("/routine/get_command", methods=["POST"])
-@cross_origin()
+@cross_origin(origins="http://localhost")
 def get_command():
     try:
         logger.info("Getting latest message")
@@ -78,14 +73,13 @@ def get_command():
             })
     except Exception as e:
         logger.error(e)
-        session.rollback()
         return jsonify({
             "status": "error",
-            "error": e
+            "error": str(e)
         })
     
 @app.route("/routine/list", methods=["POST"])
-@cross_origin()
+@cross_origin(origins="http://localhost")
 def routine_list():
     try:
         return jsonify({"list": get_routine_list(),
@@ -93,11 +87,11 @@ def routine_list():
     except Exception as e:
         logger.error(e)
         return jsonify({"status": "error",
-                        "error": e})
+                        "error": str(e)})
 
 
 @app.route("/routine/status", methods=["POST"])
-@cross_origin()
+@cross_origin(origins="http://localhost")
 def routine_status():
     num_tasks = request.json.get("num_tasks", 5)
     routine_name = request.json.get("routine_name","")
