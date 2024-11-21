@@ -1,12 +1,16 @@
-import time
+from collections.abc import Callable
 import random
+from typing import Optional
 from .Status import TaskStatus, TaskInstanceStatus
 import logging
 
 logger = logging.getLogger(__name__)
 
 class Task:
-    def __init__(self):
+    def __init__(self,
+        function: Optional[Callable[[], None]] = None,         
+        ) -> None:
+        self.function = function
         self.status = TaskStatus.PENDING
         self.is_set = False
         self.id = None
@@ -17,20 +21,30 @@ class Task:
         self.previous_task_instance = None
 
     def run(self) -> bool:
+        # Validate task before running
+        if self.function is None:
+            raise ValueError("Task function is not set")
+        if not self.is_set:
+            raise ValueError("Task is not set")
+                
+        # Execute task
         try:
             self.status = TaskStatus.RUNNING
-            print("dummy task running")
             self.update_task_status(TaskInstanceStatus.RUNNING)
-            time.sleep(30)
-            print("dummy task is done")
+            task_result = self.function()
             self.update_task_completed()
-            return True if random.randint(0, 1) == 1 else False
+            return task_result
         
         except Exception as e:
             self.update_task_error(e)
             return False
         
-    def set(self, task_db_instance, gen_handlers):
+    def set(self, task_db_instance, gen_handlers, fuctnion: Optional[Callable[[], bool]]=None):
+        if fuctnion is not None:
+            self.function = fuctnion
+        if self.function is None:
+            raise ValueError("Task function is not set")
+        
         self.id = task_db_instance.id
         self.task_db_instance = task_db_instance
         self.set_handlers(*gen_handlers(task_db_instance))

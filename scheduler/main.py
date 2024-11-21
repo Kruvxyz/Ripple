@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import sys
-import random
 from RoutineManager.RoutineManager import RoutineManager
 from RoutineManager.Routine import Routine
 from RoutineManager.Task import Task
@@ -27,18 +26,9 @@ if __name__ == "__main__":
 
     logger.info("Adding routines to RoutineManager")
 
-    # TODO: Add routines to the RoutineManager
-    dummy_task = Task()
-    test_routine = Routine(
-        name="test_routine",
-        description="This is a test routine",
-        task=dummy_task,
-        interval=5,
-        condition_function=lambda: True if random.randint(0, 1) == 1 else False,
-        condition_interval=5*60,
-        retry_delay=5*60,
-        retry_limit=5
-    )
+    from Routines import dummy_routine, test_routine
+
+    routine_manager.add_routine(dummy_routine)
     routine_manager.add_routine(test_routine)
 
     logger.info("Starting RoutineManager")

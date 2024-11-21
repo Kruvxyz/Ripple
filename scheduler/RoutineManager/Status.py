@@ -28,6 +28,3 @@ class TaskInstanceStatus:
     # FAILED = "failed"
     ERROR = "error"
     UNKNOWN = "unknown"
-
-class CommandStatus:
-    pass

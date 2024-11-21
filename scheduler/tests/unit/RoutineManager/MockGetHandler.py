@@ -50,4 +50,7 @@ def gen_mock_handlers(name):
     def create_new_task(task):
         return MagicMock(return_value="New Task")
     
-    return session, gen_routine, update_status, update_error, create_new_task, MagicMock()
+    def gen_task_handlers(task):
+        return MagicMock(), MagicMock(), MagicMock()
+    
+    return session, gen_routine, update_status, update_error, create_new_task, gen_task_handlers

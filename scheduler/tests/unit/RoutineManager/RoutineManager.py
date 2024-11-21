@@ -2,12 +2,27 @@ import unittest
 from unittest.mock import MagicMock, patch
 import sys
 
+class CommandStatus:
+    PENDING = "pending"
+    RUNNING = "running"
+    DONE = "done"
+    ERROR = "error"
+    ERROR_UNKNOWN_ROUTINE = "error_unknown_routine"
+
 
 class TestRoutineManager(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # Mock modules
         mock_shared = MagicMock()
+        mock_status = MagicMock()
+        mock_command_status = MagicMock(return_value=CommandStatus)
+
+        # Assign CommandStatus to the mock status module
+        mock_status.CommandStatus = mock_command_status
+
+        # Inject 'shared.Status' into sys.modules
+        sys.modules["shared.Status"] = mock_status
         sys.modules["shared"] = mock_shared
 
         mock_db = MagicMock()

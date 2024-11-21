@@ -12,17 +12,26 @@ class TestTask(unittest.TestCase):
         self.assertEqual(task.status, TaskStatus.PENDING)
         self.assertEqual(task.is_set, False)
 
-    def test_run(self):
+    def test_run_failure(self):
+        # not set function
         task = Task()
         task.update_task_status = MagicMock()
         task.update_task_completed = MagicMock()
         self.assertEqual(task.update_task_status.called, False)
         self.assertEqual(task.update_task_completed.called, False)
-        result = task.run()
-        self.assertEqual(task.update_task_status.called, True)
-        self.assertEqual(task.update_task_completed.called, True)
-        # self.assertEqual(result, True)
-        self.assertEqual(task.status, TaskStatus.RUNNING)
+        with self.assertRaises(ValueError) as context:
+            task.run()
+        self.assertEqual(str(context.exception), "Task function is not set")
+
+        # not set task
+        task = Task(function=lambda: True)
+        task.update_task_status = MagicMock()
+        task.update_task_completed = MagicMock()
+        self.assertEqual(task.update_task_status.called, False)
+        self.assertEqual(task.update_task_completed.called, False)
+        with self.assertRaises(ValueError) as context:
+            task.run()
+        self.assertEqual(str(context.exception), "Task is not set")
 
     def test_set_run_release(self):
         update_task_status = MagicMock()
@@ -30,7 +39,8 @@ class TestTask(unittest.TestCase):
         update_task_error = MagicMock()
         gen_handlers = MagicMock(return_value=(update_task_status, update_task_error, update_task_completed))
 
-        task = Task()
+        # set task
+        task = Task(function=lambda: True)
         self.assertEqual(task.status, TaskStatus.PENDING)   
         self.assertEqual(task.is_set, False)
         db_instance = MagicMock()
@@ -46,12 +56,14 @@ class TestTask(unittest.TestCase):
 
         self.assertEqual(task.get_instance(), db_instance)
 
+        # run task
         self.assertEqual(update_task_completed.called, False)
         result = task.run()
         self.assertEqual(update_task_completed.called, True)
-        # self.assertEqual(result, True)
+        self.assertEqual(result, True)
         self.assertEqual(task.status, TaskStatus.RUNNING)
 
+        # release task
         task.release()
         self.assertEqual(task.status, TaskStatus.PENDING)
         self.assertEqual(task.is_set, False)

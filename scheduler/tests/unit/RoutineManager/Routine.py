@@ -30,6 +30,7 @@ class TestRoutine(unittest.TestCase):
             retry_delay=self.INTERVAL,
             retry_limit=5,
             timeout_limit=60,
+            gen_handler = gen_mock_handlers
         )
         # self.assertFalse(mock_handler.called)
         

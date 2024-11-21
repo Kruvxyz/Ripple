@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from typing import Optional
+from typing import Any, Tuple, Optional
 import asyncio
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, TimeoutError
 import time
@@ -43,23 +43,24 @@ class Routine:
             interval: int, 
             condition_function:Optional[Callable[[], bool]]=None,
             condition_function_args: Optional[str]=None,
-            condition_interval: int=60, # default 1 minute
             retry_delay: int=5*60, # default 5 minutes
             retry_limit: int=5, # default 5 retries
-            timeout_limit: int=60*60 # default 1 hour
+            timeout_limit: int=60*60, # default 1 hour
+            gen_handler: Any = None
         ) -> None:
         self.name = name
         self.description = description
         self.task = task
         self.interval = interval
         self.condition_function = condition_function
-        self.condition_interval = condition_interval
         self.retry_delay = retry_delay
         self.retry_limit = retry_limit
         self.timeout_limit = timeout_limit
 
         # Handlers
-        self.session, self.gen_routine, self.update_status, self.update_error, self.create_new_task, self.gen_update_task = gen_routine_handlers(self.name)
+        if gen_handler is None:
+            gen_handler = gen_routine_handlers
+        self.session, self.gen_routine, self.update_status, self.update_error, self.create_new_task, self.gen_task_handlers = gen_handler(self.name)
         self.current_task_db_instance = None
 
         # State
@@ -84,7 +85,7 @@ class Routine:
         return self.interval
 
     def get_status(self) -> Optional[str]:
-        logger.info(f"Routine {self.name} : Getting status from routine: {self.routine}")
+        logger.info(f"Routine {self.name} : Getting status for routine")
         if self.routine is not None:
             return self.routine.status
         return None
@@ -111,14 +112,12 @@ class Routine:
                         await asyncio.sleep(1) #FIXME: remove magic number
 
                     elif self.current_task_db_instance.status == TaskInstanceStatus.ERROR:
+                        # Routine raised error -> stop routine
                         self.num_retries += 1
                         self.update_status(RoutineStatus.RETRYING)
                         self.update_error("Task failed to complete")
                         self.release_task()
-                        await asyncio.sleep(self.retry_delay)
-                        self.set_new_task()
-                        await self.run_and_wait_task_at_thread_pool_executor()
-                        continue
+                        break
 
                     else:
                         self.release_task()
@@ -134,9 +133,9 @@ class Routine:
 
                 # check if condition is met
                 if not self.condition_function():
+                    logger.info(f"Routine {self.name} : Condition not met")
                     self.update_status(RoutineStatus.WAITING)
                     print(f"-----------{self.name}: CONDITION FUNCTION FAILURE -----------")
-                    # time.sleep(self.condition_interval)
                     await asyncio.sleep(self.calculate_sleep_preiod())
                     continue
 
@@ -181,18 +180,10 @@ class Routine:
         logger.info(f"Routine {self.name} : Setting new task")
         self.current_task_db_instance = self.create_new_task()
         logger.info(f"Routine {self.name} : Task created: {self.current_task_db_instance}")
-        logger.info(f"Routine {self.name} : Task created: {self.current_task_db_instance} with status: {self.current_task_db_instance.status} and id: {self.current_task_db_instance.id}")
         ## gen task handlers
-        self.task.set(self.current_task_db_instance, self.gen_update_task)
-        # print("Generating task handlers")
-        # update_task_status, update_task_error, update_task_completed = self.gen_update_task(self.current_task_db_instance)
-        # print("Task handlers generated")
-
-        # # update task with handlers
-        # print("Setting task handlers")
-        # self.task.set_handlers(update_task_status, update_task_error, update_task_completed)
-        # logger.info(f"Task {self.current_task_db_instance.id} handlers set")
-    
+        self.task.set(self.current_task_db_instance, self.gen_task_handlers)
+        logger.info(f"Routine {self.name} : Task set")
+            
     def release_task(self):
         self.current_task_db_instance = None
         self.task.release()
