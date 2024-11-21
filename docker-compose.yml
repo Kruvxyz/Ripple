@@ -11,38 +11,36 @@ services:
       - DONT_USE_DOT_ENV=1
       - FLASK_ENV=development
       # Remote MySQL
-      - MYSQL_REMOTE_HOST=mysql
-      - MYSQL_REMOTE_DATABASE=stocks_db
-      - MYSQL_REMOTE_USER=stocks_user
+      - MYSQL_REMOTE_HOST=message_queue_db
+      - MYSQL_REMOTE_DATABASE=queue_db
+      - MYSQL_REMOTE_USER=mysql_user
       - MYSQL_REMOTE_PASSWORD=securepassword
     depends_on:
       - scheduler
-      - mysql
+      - message_queue_db
     networks:
       - app-network
 
   scheduler:
     build: ./scheduler  # Path to server Dockerfile
-    # ports:
-    #   - "5050:5050"
     volumes:
       - ./shared:/app/shared
     environment:
       - DONT_USE_DOT_ENV=1
       - FLASK_ENV=development
       # Local MySQL
-      - MYSQL_HOST=ripple_db
-      - MYSQL_DATABASE=ripple_db
-      - MYSQL_USER=ripple_user
-      - MYSQL_PASSWORD=ripple_password
+      - MYSQL_HOST=scheduler_db
+      - MYSQL_DATABASE=scheduler_db
+      - MYSQL_USER=scheduler_user
+      - MYSQL_PASSWORD=securepassword
       # Remote MySQL
-      - MYSQL_REMOTE_HOST=mysql
-      - MYSQL_REMOTE_DATABASE=stocks_db
-      - MYSQL_REMOTE_USER=stocks_user
+      - MYSQL_REMOTE_HOST=message_queue_db
+      - MYSQL_REMOTE_DATABASE=queue_db
+      - MYSQL_REMOTE_USER=mysql_user
       - MYSQL_REMOTE_PASSWORD=securepassword
     depends_on:
-      - ripple_db
-      - mysql
+      - scheduler_db
+      - message_queue_db
     networks:
       - app-network
 
@@ -58,33 +56,29 @@ services:
     depends_on:
       - server
 
-  ripple_db:
+  scheduler_db:
     image: mysql:8.0 
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: ripple_db
-      MYSQL_USER: ripple_user
-      MYSQL_PASSWORD: ripple_password
-    # ports:
-    #   - "3306:3306"
+      MYSQL_DATABASE: scheduler_db
+      MYSQL_USER: scheduler_user
+      MYSQL_PASSWORD: securepassword
     volumes:
-      - ripple_datadrive:/var/lib/mysql
+      - scheduler_datadrive:/var/lib/mysql
     networks:
       - app-network
 
-  mysql:
+  message_queue_db:
     image: mysql:8.0 
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: stocks_db
-      MYSQL_USER: stocks_user
+      MYSQL_DATABASE: queue_db
+      MYSQL_USER: mysql_user
       MYSQL_PASSWORD: securepassword
-    # ports:
-    #   - "3306:3306"
     volumes:
-      - mysql_datadrive:/var/lib/mysql
+      - message_queue_datadrive:/var/lib/mysql
     networks:
       - app-network
 
@@ -93,5 +87,5 @@ networks:
     driver: bridge
 
 volumes:
-  ripple_datadrive:
-  mysql_datadrive:
+  scheduler_datadrive:
+  message_queue_datadrive:
