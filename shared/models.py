@@ -3,6 +3,7 @@ from datetime import datetime
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text, ForeignKey, Float
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
+from .Status import CommandStatus
 
 Base = declarative_base()
 
@@ -13,7 +14,7 @@ class Message(Base):
     routine = Column("routine", String(300))
     command = Column("command", String(300))
     timestamp = Column("timestamp", DateTime, default=datetime.now)
-    status = Column("status", String(300), default="pending")
+    status = Column("status", String(300), default=CommandStatus.PENDING)
     error = Column("error", Text, default="")
     response = Column("response", Text, default="")
     # routine_id = Column("routine_id", Integer, ForeignKey("routine.id"))
@@ -23,7 +24,7 @@ class Message(Base):
             sender: str, 
             routine: str, 
             command: str, 
-            status: str = "pending", 
+            status: str = CommandStatus.PENDING, 
             error: str = "", 
             response: str = "", 
             # routine_id: int = None,

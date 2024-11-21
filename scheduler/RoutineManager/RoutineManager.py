@@ -1,6 +1,6 @@
 import asyncio
 from collections.abc import Callable
-from shared import session, Message, get_latest_pending_command, update_routine_status, update_command_status, get_routine_status, update_task_status, get_task
+from shared import Message, get_latest_pending_command, update_routine_status, update_command_status, get_routine_status, update_task_status, get_task
 # from Routine import Routine
 # from routines.system.routines_managment import gen_routines_managment_routine
 import logging
@@ -8,6 +8,7 @@ from typing import Any, Dict, Optional, List
 from db import init_db
 from .Routine import Routine
 from .Status import RoutineStatus
+from shared.Status import CommandStatus
 
 logger = logging.getLogger(__name__)
 
@@ -81,8 +82,6 @@ class RoutineManager:
         logger.info(f"Routine Manager: Routine '{routine_name}' not found")
         return None
     
-    # TODO: complete the implementation
-    # What is there to do for completion?
     async def cancel_routine(self, routine_name: str) -> None:
         logger.info(f"Cancelling routine: {routine_name} : called")
         routine_task = self.routines_map_tasks.get(routine_name, None)
@@ -99,11 +98,15 @@ class RoutineManager:
 
             except Exception as e:
                 logger.error(f"Failed to cancel routine: {routine_name} with error: {e}")
-                # self.update_routine_status(
-                #     routine_name, 
-                #     RoutineStatus.UNKNOWN, 
-                #     error="Cancelling Failed with error: " + str(e)
-                # )
+                self.update_routine_status(
+                    routine_name, 
+                    RoutineStatus.UNKNOWN, 
+                    error="Cancelling Failed with error: " + str(e)
+                )
+            except asyncio.CancelledError as e:
+                logger.error(f"Routine cancelled: {routine_name} with error: {e}")
+                self.routines_map_tasks[routine_name] = None
+                self.update_routine_status(routine_name, RoutineStatus.CANCELED)
         else:
             logger.error(f"Fail to retrive routine task: {routine_name} | self.routines_map_tasks: {self.routines_map_tasks}")
             # self.update_routine_error(routine_name, "Fail to retrive routine task")
@@ -166,8 +169,8 @@ class RoutineManager:
                 continue
 
             if command.routine not in [routine.name for routine in self.routines]:
-                logger.error(f"Failed", "Unknown routine")
-                update_command_status(command, "Unknown routine")
+                logger.error(f"fail to find routine: {command.routine} in routines: {[routine.name for routine in self.routines]}")
+                update_command_status(command, CommandStatus.ERROR_UNKNOWN_ROUTINE)
 
             logger.info(f"Routine Manager: {command.routine}, {command.command}")
             routine = self.get_routine(command.routine)
@@ -175,12 +178,12 @@ class RoutineManager:
             # Handle unknown routine or command
             if routine is None or command.command not in ["start", "cancel"]: #, "execute"]:
                 logger.error(f"Unknown routine or command: {command.routine}, {command.command}")
-                update_command_status(command, "Done")
+                update_command_status(command, CommandStatus.DONE)
                 logger.error("Task done")
                 continue
 
             # Handle the command
-            update_command_status(command, "Running")
+            update_command_status(command, CommandStatus.RUNNING)
             if command.command == "start": # or command == "restart":
                 logger.info(f"Starting routine: {command.routine}")
                 await self.start_routine(command.routine)
@@ -198,7 +201,7 @@ class RoutineManager:
             else:
                 logger.error(f"Unknown command: {command.command}")
 
-            update_command_status(command, "Done")
+            update_command_status(command, CommandStatus.DONE)
 
 
 
@@ -216,13 +219,4 @@ class RoutineManager:
         # Start the main coroutine
         logger.info("Starting main coroutine")
         await self.main_coroutine()
-
-    
-
-    # # FIXME: can be remove - was only for initial testing
-    # async def run(self):
-    #     print("------------------Routine Manager started----------------")
-    #     while True:
-    #         print("Running")
-    #         await asyncio.sleep(1)
 
