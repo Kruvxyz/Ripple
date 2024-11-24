@@ -100,6 +100,19 @@ def add_routine(name: str, description: str, condition_function: Optional[str]=N
         engine.dispose()
     return None
 
+def reattach_routine(routine: Routine) -> Routine:
+    engine = generate_engine()
+    routine_session = generate_session(engine)
+    try:
+        return routine_session, routine_session.merge(routine)
+    except SQLAlchemyError as e:
+        logger.error("reattach routine - SQLAlchemyError occurred:", e, exc_info=True)
+        routine_session.rollback()
+    except Exception as e:
+        logger.error("reattach routine - Error occurred:", e, exc_info=True)        
+    return None
+
+
 def gen_routine_handlers(routine_name: str) -> Tuple[
     Session,
     Callable[[str, str, Optional[str], Optional[str], int, int], Routine],

@@ -1,10 +1,11 @@
 from collections.abc import Callable
+from sqlalchemy.exc import ResourceClosedError
 from typing import Any, Tuple, Optional
 import asyncio
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, TimeoutError
 import time
 import logging
-from db import gen_routine_handlers
+from db import gen_routine_handlers, reattach_routine
 from .Status import RoutineStatus, TaskInstanceStatus 
 from .Task import Task
 logger = logging.getLogger(__name__)
@@ -87,16 +88,30 @@ class Routine:
     def get_status(self) -> Optional[str]:
         logger.info(f"Routine {self.name} : Getting status for routine")
         if self.routine is not None:
-            return self.routine.status
+            try:
+                logger.info(f"Routine {self.name} : Routine status object: {self.routine}")
+                return self.routine.status
+            except ResourceClosedError:
+                self.session.rollback()
+                self.session, self.routine = reattach_routine(self.routine)
+                return self.routine.status
         return None
     
     def get_task_status(self) -> Optional[str]:
         #TODO: implement
         pass
 
-    
-    def get_error(self):
-        return self.routine.error
+    def get_error(self) -> Optional[str]:
+        logger.info(f"Routine {self.name} : Getting error for routine")
+        if self.routine is not None:
+            try:
+                logger.info(f"Routine {self.name} : Routine error object: {self.routine}")
+                return self.routine.error
+            except ResourceClosedError:
+                self.session.rollback()
+                self.session, self.routine = reattach_routine(self.routine)
+                return self.routine.error
+        return None        
     
     async def run(self) -> None:
         print(f"------------------{self.name}: Routine started----------------")
@@ -183,7 +198,7 @@ class Routine:
         ## gen task handlers
         self.task.set(self.current_task_db_instance, self.gen_task_handlers)
         logger.info(f"Routine {self.name} : Task set")
-            
+
     def release_task(self):
         self.current_task_db_instance = None
         self.task.release()
