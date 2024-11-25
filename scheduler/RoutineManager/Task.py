@@ -7,9 +7,12 @@ import logging
 logger = logging.getLogger(__name__)
 
 class Task:
-    def __init__(self,
-        function: Optional[Callable[[], None]] = None,         
+    def __init__(
+            self,
+            name: str,
+            function: Optional[Callable[[], None]] = None,         
         ) -> None:
+        self.name = name
         self.function = function
         self.status = TaskStatus.PENDING
         self.is_set = False
@@ -32,12 +35,17 @@ class Task:
             self.status = TaskStatus.RUNNING
             self.update_task_status(TaskInstanceStatus.RUNNING)
             task_result = self.function()
-            self.update_task_completed()
-            self.status = TaskInstanceStatus.DONE if task_result else TaskInstanceStatus.ERROR
+            logger.debug(f"Task {self.id} : Task executed with result {task_result}")
+            if task_result:
+                self.status = TaskInstanceStatus.DONE
+                self.update_task_completed()
+            else:
+                self.status = TaskInstanceStatus.ERROR
+                self.update_task_error("Task failed")
             return task_result
         
         except Exception as e:
-            self.update_task_error(e)
+            self.update_task_error(f"task {self.name}:{self.id} failed with error:\n{e}")
             self.status = TaskInstanceStatus.ERROR
             return False
         
@@ -79,4 +87,3 @@ class Task:
             return self.previous_task_instance
         return self.task_db_instance
     
-dummy_task = Task()

@@ -6,7 +6,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def get_all_items_task() -> None:
+def get_all_items_task() -> bool:
     from bs4 import BeautifulSoup
     import urllib3
 
@@ -31,21 +31,26 @@ def get_all_items_task() -> None:
         article = http.request('GET', article_link)
         article_soup = BeautifulSoup(article.data.decode('utf-8', errors='replace'), 'html.parser')
         logger.info("ynet | article soup created")
-        article_title = article_soup.find('h1', class_='mainTitle').text#.encode("utf-8") 
-        subTitle = article_soup.find('span', class_='subTitle').text#.encode("utf-8") 
-        article_content = article_soup.find('div', class_='article-body').text#.encode("utf-8")
-        authors = article_soup.find('div', class_='authors').text#.encode("utf-8") 
-        logger.info("ynet | article content extracted")
-        add_article(
-            link=article_link,
-            title=article_title, 
-            content=article_content, 
-            author=authors,
-            publication_date=parse_date_and_assign(item.pubdate.text),
-            source="ynet"
-        )
+        try:
+            article_title = article_soup.find('h1', class_='mainTitle').text#.encode("utf-8") 
+            subTitle = article_soup.find('span', class_='subTitle').text#.encode("utf-8") 
+            article_content = article_soup.find('div', class_='article-body').text#.encode("utf-8")
+            authors = article_soup.find('div', class_='authors').text#.encode("utf-8") 
+            logger.info("ynet | article content extracted")
+            add_article(
+                link=article_link,
+                title=article_title, 
+                content=article_content, 
+                author=authors,
+                publication_date=parse_date_and_assign(item.pubdate.text),
+                source="ynet"
+            )
+        except:
+            logger.error(f"ynet | error parsing article with link: {article_link}")
+            continue
         logger.info(f"ynet | article added | {article_link}")
     logger.info("ynet | task completed")
+    return True
 
 def parse_date_and_assign(date_string) -> datetime:
     # Parse the date string into a datetime object
@@ -54,6 +59,7 @@ def parse_date_and_assign(date_string) -> datetime:
     return publication_datetime
 
 ynet_task = Task(
+    name="ynet_scraper",
     function=get_all_items_task
 )
 

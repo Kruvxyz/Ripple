@@ -1,13 +1,12 @@
 class RoutineStatus:
-    PENDING = "pending" # Routine initial state before running
     WAITING = "waiting" # Routine is waiting for the condition to be met
-    STARTING = "starting"
-    RETRYING = "retrying"
+    PENDING = "pending" # Routine is pending to run
+    DONE = "done" # Routine is done
+    RETRY = "retry"
     RUNNING = "running"
     CANCELED = "canceled"
-    RESTART = "restart"
-    FAILED = "failed"
-    ERROR = "error" # in use
+    FAIL = "fail"
+    ERROR = "error" 
     COMPLETE = "complete"
     UNKNOWN = "unknown"
 

@@ -27,14 +27,15 @@ class Routine:
     4. release task
 
     States:
-    - PENDING: Routine initial state before running
     - WAITING: Routine is waiting for the condition to be met
-    - EXECUTING / RUNNING: Routine is currently being executed, this means the task is running
-
-    Routines are made of 2 parts:
-    - Trigger (condition to be met before executing the routine's task)
-    - Task (function to be executed when trigger is met will run on separate threads (Thread Pool Executor / Process Pool Executor))
-    Routines can be stopped, started, and paused.
+    - PENDING: Routine is preparing to run the task
+    - RUNNING: Routine is currently executing the task
+    - DONE: Routine has completed the task and is resetting
+    - ERROR: Routine encountered an error and will retry
+    - RETRY: Routine is retrying the task after an error
+    - FAIL: Routine has failed after exceeding retry limit
+    - COMPLETE: Routine has completed its run-once task
+    - CANCELED: Routine has been canceled
     """
     def __init__(
             self, 
@@ -59,6 +60,7 @@ class Routine:
         self.retry_limit = retry_limit
         self.timeout_limit = timeout_limit
         self.run_once = run_once
+        self.status = RoutineStatus.WAITING
 
         # Handlers
         if gen_handler is None:
@@ -73,17 +75,6 @@ class Routine:
 
         # Update DB
         self.routine = self.gen_routine(description)       
-
-    # FIXME: remove and work directly with DB
-    # def set_handlers(
-    #         self, 
-    #         update_status_function: Callable[[str], bool], 
-    #         update_error_function: Callable[[str], bool], 
-    #         # kill_switch: Optional[Callable[[], bool]] = None
-    #     ) -> None:
-    #     self.update_status_function = update_status_function
-    #     self.update_error_function = update_error_function
-    #     # self.kill_switch = kill_switch
 
     def calculate_sleep_preiod(self) -> int:
         return self.interval
@@ -120,7 +111,23 @@ class Routine:
                 self.session.rollback()
                 self.session, self.routine = reattach_routine(self.routine)
                 return self.routine.error
-        return None        
+        return None
+
+    def set_status(self, status: str) -> None:
+        if status not in vars(RoutineStatus).values():
+            raise ValueError(f"Routine {self.name} : Invalid status {status}")
+        logger.info(f"Routine {self.name} : Setting status for routine. Current {self.status} next status {status}")
+        self.status = status
+        self.update_status(status)
+        logger.debug(f"Routine {self.name} : Status set to {status}")
+        return None
+    
+    def set_error(self, error: str) -> None:
+        logger.info(f"Routine {self.name} : Setting error for routine. Current {self.status} next error {error}")
+        self.status = RoutineStatus.ERROR
+        self.update_error(error)
+        logger.debug(f"Routine {self.name} : Error set to {error}")
+        return None
     
     async def run(self) -> None:
         logger.debug(f"Routine {self.name}: Routine run")
@@ -136,58 +143,121 @@ class Routine:
         
         while True:
             try:
-                logger.info(f"Routine {self.name}: loop")
-
-                logger.info(f"Routine {self.name} : Checking task status and update routine status if needed")
-                if self.current_task_db_instance is not None:
-                    self.session.refresh(self.current_task_db_instance)
-                    if self.current_task_db_instance.status == TaskInstanceStatus.RUNNING:
-                        logger.debug(f"Routine {self.name} : Task is running")
-                        await asyncio.sleep(1) #FIXME: remove magic number
-
-                    elif self.current_task_db_instance.status == TaskInstanceStatus.ERROR:
-                        logger.debug(f"Routine {self.name} : Task raised error")
-                        # Routine raised error -> stop routine
-                        self.num_retries += 1
-                        self.update_status(RoutineStatus.RETRYING)
-                        self.update_error("Task failed to complete")
-                        self.release_task()
-                        return None
-
-                    elif self.current_task_db_instance.status == TaskInstanceStatus.DONE:
-                        logger.debug(f"Routine {self.name} : Task completed")
-                        self.release_task()
-                        self.update_status(RoutineStatus.WAITING)
-                        self.num_retries = 0
-                        if self.run_once and self.executed_first_time:
-                            self.release_task()
-                            logger.info("Routine {self.name} : Run once routine completed")
-                            self.update_status(RoutineStatus.COMPLETE)
-                            return None
+                logger.debug(f"Routine {self.name}: loop")
+                
+                # WAITING
+                # Next steps: [PENDING]
+                if self.status == RoutineStatus.WAITING:
+                    logger.debug(f"Routine {self.name} : Waiting for condition to be met")
+                    if self.condition_function():
+                        self.set_status(RoutineStatus.PENDING)
 
                     else:
-                        self.release_task()
-                        self.update_status(RoutineStatus.WAITING)
-                        self.num_retries = 0
+                        logger.debug(f"Routine {self.name} : Condition not met")
+                        await asyncio.sleep(self.calculate_sleep_preiod())
 
-                # sleep before checking trigger
-                await asyncio.sleep(self.calculate_sleep_preiod()) 
+                # PENDING / RETRY
+                # Nex steps: [RUNNING]
+                elif self.status == RoutineStatus.PENDING or self.status == RoutineStatus.RETRY:
+                    logger.info(f"Routine {self.name} : Preparing task")
+                    self.set_new_task()
+                    self.set_status(RoutineStatus.RUNNING)
+                
+                # RUNNING
+                # Next steps: [DONE, ERROR, RETRY]
+                elif self.status == RoutineStatus.RUNNING:
+                    logger.info(f"Routine {self.name} : Running task")
+                    result = await self.run_and_wait_task_at_thread_pool_executor()
+                    logger.info(f"Routine {self.name} : task completed with result: {result}")
+                    # FIXME: use DB status instead of result
+                    if result is True:
+                        self.executed_first_time = True
+                        if self.run_once and self.executed_first_time:
+                            self.set_status(RoutineStatus.COMPLETE)
+                        else:
+                            self.set_status(RoutineStatus.DONE)
+                    else:
+                        self.set_status(RoutineStatus.ERROR)
+                        self.num_retries += 1
 
-                # check if condition is met
-                if not self.condition_function():
-                    logger.info(f"Routine {self.name} : Condition not met")
-                    self.update_status(RoutineStatus.WAITING)
-                    print(f"-----------{self.name}: CONDITION FUNCTION FAILURE -----------")
+                # DONE
+                # Next steps: [WAITING]
+                elif self.status == RoutineStatus.DONE:
+                    logger.info(f"Routine {self.name}: Done")
+                    self.release_task()
+                    self.num_retries = 0
                     await asyncio.sleep(self.calculate_sleep_preiod())
-                    continue
+                    self.set_status(RoutineStatus.WAITING)
 
-                print(f"-----------{self.name}: RUNNING FUNCTION-----------")
-                logger.info(f"Routine {self.name} : Running task")
-                self.update_status(RoutineStatus.RUNNING)
-                self.set_new_task()
-                await self.run_and_wait_task_at_thread_pool_executor()
-                logger.info(f"Routine {self.name} : loop completed")
-                self.executed_first_time = True
+                # ERROR
+                # Next steps: [RETRY, FAIL]
+                elif self.status == RoutineStatus.ERROR:
+                    logger.info(f"Routine {self.name}: Error")
+                    self.release_task()
+                    if self.num_retries >= self.retry_limit:
+                        # self.update_error("Retry limit reached for the routine")
+                        logger.error("Retry limit reached for the routine")
+                        self.set_status(RoutineStatus.FAIL)
+                    else:
+                        self.set_status(RoutineStatus.RETRY)
+                    await asyncio.sleep(self.retry_delay)
+
+                # FAIL
+                # Next steps: [None]
+                elif self.status == RoutineStatus.FAIL:
+                    logger.info(f"Routine {self.name}: Fail")
+                    return None
+                
+                
+                # COMPLETE
+                # Next steps: [None]
+                elif self.status == RoutineStatus.COMPLETE:
+                    self.release_task()
+                    logger.info("Routine {self.name} : Run once routine completed")
+                    return None
+
+                # # CANCELED - setting this state is from outside the main loop
+                # # Next steps: [None]
+                # elif self.status == RoutineStatus.CANCELED:
+                #     self.release_task()
+                #     logger.info(f"Routine {self.name}: Canceled")
+                #     return None
+
+
+                # FIXME - integrate in state RUNNING
+                # logger.info(f"Routine {self.name} : Checking task status and update routine status if needed")
+                # if self.current_task_db_instance is not None:
+                #     self.session.refresh(self.current_task_db_instance)
+                #     if self.current_task_db_instance.status == TaskInstanceStatus.RUNNING:
+                #         logger.debug(f"Routine {self.name} : Task is running")
+                #         await asyncio.sleep(1) #FIXME: remove magic number
+
+                #     elif self.current_task_db_instance.status == TaskInstanceStatus.ERROR:
+                #         logger.debug(f"Routine {self.name} : Task raised error")
+                #         # Routine raised error -> stop routine
+                #         self.num_retries += 1
+                #         self.update_status(RoutineStatus.RETRYING)
+                #         self.update_error("Task failed to complete")
+                #         self.release_task()
+                #         return None
+
+                #     elif self.current_task_db_instance.status == TaskInstanceStatus.DONE:
+                #         logger.debug(f"Routine {self.name} : Task completed")
+                #         self.release_task()
+                #         self.update_status(RoutineStatus.WAITING)
+                #         self.num_retries = 0
+                #         if self.run_once and self.executed_first_time:
+                #             self.release_task()
+                #             logger.info("Routine {self.name} : Run once routine completed")
+                #             self.update_status(RoutineStatus.COMPLETE)
+                #             return None
+
+                #     else:
+                #         self.release_task()
+                #         self.update_status(RoutineStatus.WAITING)
+                #         self.num_retries = 0
+
+
 
             except Exception as e:
                 if self.num_retries >= self.retry_limit:
@@ -228,12 +298,6 @@ class Routine:
         self.current_task_db_instance = None
         self.task.release()
 
-    def run_task_at_thread_pool_executor(self):
-        loop = asyncio.get_running_loop()
-        executor = ThreadPoolExecutor()
-        future = loop.run_in_executor(executor, self.task.run)
-        return future
-    
     async def run_and_wait_task_at_thread_pool_executor(self):
         try:
             loop = asyncio.get_running_loop()
@@ -247,7 +311,3 @@ class Routine:
             future.cancel()
             print("Task timed out and will be cancelled.")
         
-    def run_task(self):
-        self.set_new_task()
-        future = self.run_task_at_thread_pool_executor()
-        return future

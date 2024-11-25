@@ -3,6 +3,7 @@ from datetime import datetime
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text, ForeignKey, Float
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
+from RoutineManager.Status import RoutineStatus, TaskInstanceStatus
 
 Base = declarative_base()
 
@@ -11,7 +12,7 @@ class Routine(Base):
     id = Column("id", Integer, primary_key=True)
     name = Column("name", String(300))
     description = Column("description", Text)
-    status = Column("status", String(300), default="waiting")
+    status = Column("status", String(300), default=RoutineStatus.WAITING)
     # current_task = relationship("Task")
 
     # Foreign key for the current task
@@ -55,7 +56,7 @@ class Task(Base):
     id = Column("id", Integer, primary_key=True)
     routine_id = Column("routine_id", Integer, ForeignKey('routines.id'))
     routine = relationship("Routine", back_populates="tasks")
-    status = Column("status", String(300), default="pending")
+    status = Column("status", String(300), default=TaskInstanceStatus.PENDING)
     error = Column("error", Text, default="")
     created_at = Column("created_at", DateTime, default=datetime.now)
     updated_at = Column("updated_at", DateTime, default=datetime.now)

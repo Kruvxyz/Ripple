@@ -120,9 +120,7 @@ class RoutineManager:
         
         routine = self.get_routine(routine_name)
         if routine is not None:
-            self.update_routine_status(routine_name, RoutineStatus.STARTING)
             self.routines_map_tasks[routine_name] = asyncio.create_task(routine.run())
-            self.update_routine_status(routine_name, RoutineStatus.RUNNING)
 
     async def restart_routine(self, routine_name: str): 
         logger.info(f"cancle routine: {routine_name}")

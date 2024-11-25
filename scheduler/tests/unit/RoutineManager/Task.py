@@ -8,13 +8,13 @@ class TestTask(unittest.TestCase):
         pass
 
     def test_task(self):
-        task = Task()
+        task = Task("test_task")
         self.assertEqual(task.status, TaskStatus.PENDING)
         self.assertEqual(task.is_set, False)
 
     def test_run_failure(self):
         # not set function
-        task = Task()
+        task = Task("test_task")
         task.update_task_status = MagicMock()
         task.update_task_completed = MagicMock()
         self.assertEqual(task.update_task_status.called, False)
@@ -24,7 +24,7 @@ class TestTask(unittest.TestCase):
         self.assertEqual(str(context.exception), "Task function is not set")
 
         # not set task
-        task = Task(function=lambda: True)
+        task = Task("test_task", function=lambda: True)
         task.update_task_status = MagicMock()
         task.update_task_completed = MagicMock()
         self.assertEqual(task.update_task_status.called, False)
@@ -40,7 +40,7 @@ class TestTask(unittest.TestCase):
         gen_handlers = MagicMock(return_value=(update_task_status, update_task_error, update_task_completed))
 
         # set task
-        task = Task(function=lambda: True)
+        task = Task("test_task", function=lambda: True)
         self.assertEqual(task.status, TaskStatus.PENDING)   
         self.assertEqual(task.is_set, False)
         db_instance = MagicMock()
@@ -61,7 +61,7 @@ class TestTask(unittest.TestCase):
         result = task.run()
         self.assertEqual(update_task_completed.called, True)
         self.assertEqual(result, True)
-        self.assertEqual(task.status, TaskStatus.RUNNING)
+        self.assertEqual(task.status, TaskStatus.DONE)
 
         # release task
         task.release()
