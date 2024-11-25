@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import MagicMock
 from RoutineManager.Task import Task  # Import the class to be tested
-from RoutineManager.Status import TaskStatus
+from RoutineManager.Status import TaskInstanceStatus
 
 class TestTask(unittest.TestCase):
     def setUp(self):
@@ -9,7 +9,7 @@ class TestTask(unittest.TestCase):
 
     def test_task(self):
         task = Task("test_task")
-        self.assertEqual(task.status, TaskStatus.PENDING)
+        self.assertEqual(task.status, TaskInstanceStatus.PENDING)
         self.assertEqual(task.is_set, False)
 
     def test_run_failure(self):
@@ -41,7 +41,7 @@ class TestTask(unittest.TestCase):
 
         # set task
         task = Task("test_task", function=lambda: True)
-        self.assertEqual(task.status, TaskStatus.PENDING)   
+        self.assertEqual(task.status, TaskInstanceStatus.PENDING)   
         self.assertEqual(task.is_set, False)
         db_instance = MagicMock()
         db_instance.id = 1
@@ -51,7 +51,7 @@ class TestTask(unittest.TestCase):
         self.assertEqual(task.update_task_status, update_task_status)
         self.assertEqual(task.update_task_completed, update_task_completed) 
         self.assertEqual(task.update_task_error, update_task_error)
-        self.assertEqual(task.status, TaskStatus.READY)
+        self.assertEqual(task.status, TaskInstanceStatus.READY)
         self.assertEqual(task.is_set, True)
 
         self.assertEqual(task.get_instance(), db_instance)
@@ -61,11 +61,11 @@ class TestTask(unittest.TestCase):
         result = task.run()
         self.assertEqual(update_task_completed.called, True)
         self.assertEqual(result, True)
-        self.assertEqual(task.status, TaskStatus.DONE)
+        self.assertEqual(task.status, TaskInstanceStatus.DONE)
 
         # release task
         task.release()
-        self.assertEqual(task.status, TaskStatus.PENDING)
+        self.assertEqual(task.status, TaskInstanceStatus.PENDING)
         self.assertEqual(task.is_set, False)
 
 if __name__ == '__main__':

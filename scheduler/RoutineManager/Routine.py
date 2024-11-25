@@ -113,7 +113,7 @@ class Routine:
                 return self.routine.error
         return None
 
-    def set_status(self, status: str) -> None:
+    def set_status(self, status: RoutineStatus) -> None:
         if status not in vars(RoutineStatus).values():
             raise ValueError(f"Routine {self.name} : Invalid status {status}")
         logger.info(f"Routine {self.name} : Setting status for routine. Current {self.status} next status {status}")

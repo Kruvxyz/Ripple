@@ -10,21 +10,10 @@ class RoutineStatus:
     COMPLETE = "complete"
     UNKNOWN = "unknown"
 
-class TaskStatus:
+class TaskInstanceStatus:
     PENDING = "pending" # Indicate no task has been set
     READY = "ready" # Indicate task has been set and ready to run
     RUNNING = "running"
-    # COMPLETED = "completed"
     DONE = "done"
-    # FAILED = "failed"
-    ERROR = "error"
-    # UNKNOWN = "unknown"
-
-class TaskInstanceStatus:
-    PENDING = "pending" # Indicate no task has been set
-    RUNNING = "running"
-    # COMPLETED = "completed"
-    DONE = "done"
-    # FAILED = "failed"
     ERROR = "error"
     UNKNOWN = "unknown"
