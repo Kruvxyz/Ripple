@@ -53,10 +53,11 @@ def generate_session(engine: Engine):
     Session = scoped_session(session_factory)  # Thread-safe session
     return Session()
 
-def init_db() -> None:
+def init_db() -> bool:
     engine = generate_engine()
     Article.metadata.create_all(engine)
     engine.dispose()
+    return True
 
 def add_article(
         link: str,
@@ -102,12 +103,12 @@ def read_article(article_id: int) -> Article:
     finally:
         session.close()
         engine.dispose()
-        
-def check_article_exists(title: str, source: str) -> bool:
+
+def check_article_exists(link: str, source: str) -> bool:
     engine = generate_engine()
     session = generate_session(engine)
     try:
-        article = session.query(Article).filter(Article.title == title, Article.source == source).first()
+        article = session.query(Article).filter(Article.link == link, Article.source == source).first()
         return article is not None
     except SQLAlchemyError as e:
         logger.error(e)
