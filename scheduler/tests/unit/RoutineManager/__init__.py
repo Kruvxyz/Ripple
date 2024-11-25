@@ -1,5 +1,6 @@
 import unittest
 
+from .Task import TestTask
 from .Routine import TestRoutine
 from .RoutineManager import TestRoutineManager
 
