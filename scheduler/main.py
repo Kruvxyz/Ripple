@@ -26,8 +26,10 @@ if __name__ == "__main__":
 
     logger.info("Adding routines to RoutineManager")
 
-    from Routines import dummy_routine, test_routine
+    from Routines import dummy_routine, test_routine, db_init_routine, ynet_routine
 
+    routine_manager.add_routine(db_init_routine)
+    routine_manager.add_routine(ynet_routine)
     routine_manager.add_routine(dummy_routine)
     routine_manager.add_routine(test_routine)
 

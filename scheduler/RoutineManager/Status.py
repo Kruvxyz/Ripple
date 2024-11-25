@@ -8,6 +8,7 @@ class RoutineStatus:
     RESTART = "restart"
     FAILED = "failed"
     ERROR = "error" # in use
+    COMPLETE = "complete"
     UNKNOWN = "unknown"
 
 class TaskStatus:

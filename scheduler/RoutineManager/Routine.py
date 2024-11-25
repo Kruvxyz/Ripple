@@ -47,7 +47,8 @@ class Routine:
             retry_delay: int=5*60, # default 5 minutes
             retry_limit: int=5, # default 5 retries
             timeout_limit: int=60*60, # default 1 hour
-            gen_handler: Any = None
+            gen_handler: Any = None,
+            run_once: bool = False
         ) -> None:
         self.name = name
         self.description = description
@@ -57,6 +58,7 @@ class Routine:
         self.retry_delay = retry_delay
         self.retry_limit = retry_limit
         self.timeout_limit = timeout_limit
+        self.run_once = run_once
 
         # Handlers
         if gen_handler is None:
@@ -66,7 +68,8 @@ class Routine:
 
         # State
         self.num_retries = 0
-
+        if run_once:
+            self.executed_first_time = False
 
         # Update DB
         self.routine = self.gen_routine(description)       
@@ -92,6 +95,12 @@ class Routine:
                 logger.info(f"Routine {self.name} : Routine status object: {self.routine}")
                 return self.routine.status
             except ResourceClosedError:
+                logger.error(f"Routine {self.name} : Error getting status - ResourceClosedError")
+                self.session.rollback()
+                self.session, self.routine = reattach_routine(self.routine)
+                return self.routine.status
+            except Exception as e:
+                logger.error(f"Routine {self.name} : Error getting status: {e}")
                 self.session.rollback()
                 self.session, self.routine = reattach_routine(self.routine)
                 return self.routine.status
@@ -114,37 +123,55 @@ class Routine:
         return None        
     
     async def run(self) -> None:
-        print(f"------------------{self.name}: Routine started----------------")
+        logger.debug(f"Routine {self.name}: Routine run")
+        logger.debug(f"Routine started: {self.name} / pre loop")
         self.update_status(RoutineStatus.PENDING)
+
+        # trigger validation
+        logger.info(f"Routine {self.name} : Checking trigger")
+        if self.condition_function is None:
+            logger.error(f"Routine {self.name}: CONDITION FUNCTION NOT SET")
+            self.update_error("Condition function not set")
+            return None
+        
         while True:
             try:
-                logger.info(f"Routine started: {self.name}")
+                logger.info(f"Routine {self.name}: loop")
 
                 logger.info(f"Routine {self.name} : Checking task status and update routine status if needed")
                 if self.current_task_db_instance is not None:
                     self.session.refresh(self.current_task_db_instance)
                     if self.current_task_db_instance.status == TaskInstanceStatus.RUNNING:
+                        logger.debug(f"Routine {self.name} : Task is running")
                         await asyncio.sleep(1) #FIXME: remove magic number
 
                     elif self.current_task_db_instance.status == TaskInstanceStatus.ERROR:
+                        logger.debug(f"Routine {self.name} : Task raised error")
                         # Routine raised error -> stop routine
                         self.num_retries += 1
                         self.update_status(RoutineStatus.RETRYING)
                         self.update_error("Task failed to complete")
                         self.release_task()
-                        break
+                        return None
+
+                    elif self.current_task_db_instance.status == TaskInstanceStatus.DONE:
+                        logger.debug(f"Routine {self.name} : Task completed")
+                        self.release_task()
+                        self.update_status(RoutineStatus.WAITING)
+                        self.num_retries = 0
+                        if self.run_once and self.executed_first_time:
+                            self.release_task()
+                            logger.info("Routine {self.name} : Run once routine completed")
+                            self.update_status(RoutineStatus.COMPLETE)
+                            return None
 
                     else:
                         self.release_task()
                         self.update_status(RoutineStatus.WAITING)
                         self.num_retries = 0
 
-                # trigger validation
-                logger.info(f"Routine {self.name} : Checking trigger")
-                if self.condition_function is None:
-                    print(f"-----------{self.name}: CONDITION FUNCTION NOT SET -----------")
-                    self.update_error("Condition function not set")
-                    return None
+                # sleep before checking trigger
+                await asyncio.sleep(self.calculate_sleep_preiod()) 
 
                 # check if condition is met
                 if not self.condition_function():
@@ -160,9 +187,7 @@ class Routine:
                 self.set_new_task()
                 await self.run_and_wait_task_at_thread_pool_executor()
                 logger.info(f"Routine {self.name} : loop completed")
-
-                await asyncio.sleep(self.calculate_sleep_preiod()) #FIXME: remove magic number
-
+                self.executed_first_time = True
 
             except Exception as e:
                 if self.num_retries >= self.retry_limit:

@@ -38,6 +38,11 @@ services:
       - MYSQL_REMOTE_DATABASE=queue_db
       - MYSQL_REMOTE_USER=mysql_user
       - MYSQL_REMOTE_PASSWORD=securepassword
+      # articles MySQL
+      - MYSQL_ARTICLES_HOST=articles_db
+      - MYSQL_ARTICLES_DATABASE=articles_db
+      - MYSQL_ARTICLES_USER=articles_user
+      - MYSQL_ARTICLES_PASSWORD=securepassword
     depends_on:
       - scheduler_db
       - message_queue_db
@@ -82,6 +87,20 @@ services:
     networks:
       - app-network
 
+  # temporary inside the same docker-compose file
+  articles_db:
+    image: mysql:8.0 
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: articles_db
+      MYSQL_USER: articles_user
+      MYSQL_PASSWORD: securepassword
+    volumes:
+      - articles_datadrive:/var/lib/mysql
+    networks:
+      - app-network
+
 networks:
   app-network:
     driver: bridge
@@ -89,3 +108,4 @@ networks:
 volumes:
   scheduler_datadrive:
   message_queue_datadrive:
+  articles_datadrive:

@@ -33,10 +33,12 @@ class Task:
             self.update_task_status(TaskInstanceStatus.RUNNING)
             task_result = self.function()
             self.update_task_completed()
+            self.status = TaskInstanceStatus.DONE if task_result else TaskInstanceStatus.ERROR
             return task_result
         
         except Exception as e:
             self.update_task_error(e)
+            self.status = TaskInstanceStatus.ERROR
             return False
         
     def set(self, task_db_instance, gen_handlers, fuctnion: Optional[Callable[[], bool]]=None):
