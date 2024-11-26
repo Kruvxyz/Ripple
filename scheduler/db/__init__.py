@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 def connect_with_retry(db_url, retries=5, delay=2):
     for i in range(retries):
         try:
-            engine = create_engine(db_url)
+            engine = create_engine(db_url, pool_recycle=3600)
             # Try connecting
             with engine.connect() as connection:
                 print("Successfully connected to the database!")
