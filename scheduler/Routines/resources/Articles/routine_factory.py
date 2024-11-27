@@ -13,7 +13,9 @@ def gen_routine(
         source: str, 
         parsing_function: Callable[[Any], Tuple[str, str, str]],
         time_parse_string: str,
-        identifier: Optional[str] = None) -> Routine:
+        identifier: Optional[str] = None,
+        raise_parsing_error: bool = False # If True, the routine will stop if an error occurs while parsing an article
+    ) -> Routine:
     
     decorated_source = source   
     if identifier:
@@ -35,6 +37,12 @@ def gen_routine(
             logger.info(f"{decorated_source} | article soup created")
             try:
                 article_title, article_content, authors = parsing_function(article_soup)
+            except Exception as e:
+                logger.error(f"{decorated_source} | error parsing article with link: {article_link} with error: {e}")
+                article_title, article_content, authors = None, None, None
+                if raise_parsing_error:
+                    return False
+            try:
                 logger.info(f"{decorated_source} | article content extracted")
                 add_article(
                     link=article_link,
@@ -45,7 +53,7 @@ def gen_routine(
                     source=source
                 )
             except Exception as e:
-                logger.error(f"{decorated_source} | error parsing article with link: {article_link} with error: {e}")
+                logger.error(f"{decorated_source} | error pushing article to db , article link: {article_link} with error: {e}")
                 return False
             logger.info(f"{decorated_source} | article added | {article_link}")
         logger.info(f"{decorated_source} | task completed")
