@@ -42,12 +42,12 @@ class Routine:
             name: str, 
             description: str, 
             task: Task, 
-            interval: int, 
-            condition_function:Optional[Callable[[], bool]]=None,
-            condition_function_args: Optional[str]=None,
-            retry_delay: int=5*60, # default 5 minutes
-            retry_limit: int=5, # default 5 retries
-            timeout_limit: int=60*60, # default 1 hour
+            interval: int = 60, 
+            condition_function:Optional[Callable[[], bool]] = None,
+            condition_function_args: Optional[str] = None,
+            retry_delay: int = 5*60, # default 5 minutes
+            retry_limit: int = 5, # default 5 retries
+            timeout_limit: int = 60*60, # default 1 hour
             gen_handler: Any = None,
             run_once: bool = False
         ) -> None:

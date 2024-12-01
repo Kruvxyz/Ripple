@@ -1,6 +1,5 @@
 # temporary disable
 # selenium==4.21.0
-# yfinance==0.2.43
 
 # langchain==0.2.14
 # langchain_community==0.2.12
@@ -12,3 +11,4 @@ mysqlclient==2.1.1
 SQLAlchemy==2.0.35
 bs4==0.0.2
 urllib3==1.26.19
+yfinance==0.2.43
