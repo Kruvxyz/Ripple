@@ -132,7 +132,7 @@ class Routine:
     async def run(self) -> None:
         logger.debug(f"Routine {self.name}: Routine run")
         logger.debug(f"Routine started: {self.name} / pre loop")
-        self.update_status(RoutineStatus.PENDING)
+        self.set_status(RoutineStatus.WAITING)
 
         # trigger validation
         logger.info(f"Routine {self.name} : Checking trigger")
