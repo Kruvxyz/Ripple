@@ -151,6 +151,38 @@ def add_stock_summary(
         session.close()
         engine.dispose()
 
+def add_stock_earnings(
+        symbol: str,
+        earnings_date: datetime,
+        eps: float,
+        revenue: float,
+        is_reported: bool,
+    ) -> None:
+    engine = generate_engine()
+    session = generate_session(engine)
+    try:
+        stock = session.query(Stock).filter(Stock.symbol == symbol).first()
+        if not stock:
+            logger.error(f"add_stock_earnings | Stock with symbol {symbol} not found")
+            return
+        stock_earnings = StockEarnings(
+            stock.id,
+            earnings_date,
+            is_reported,
+            eps,
+            revenue,
+            None
+        )
+        session.add(stock_earnings)
+        session.commit()
+        logger.debug(f"add_stock_earnings | Stock earnings added with symbol {symbol} and date {earnings_date}")
+    except Exception as e:
+        logger.error(f"add_stock_earnings | Error adding stock earnings with symbol {symbol} and date {earnings_date} with error: {e}")
+        session.rollback()
+    finally:
+        session.close()
+        engine.dispose()
+
 def get_stock(symbol: str) -> Optional[Stock]:
     engine = generate_engine()
     session = generate_session(engine)
@@ -218,3 +250,4 @@ def get_stock_last_earning_date(symbol: str) -> Optional[Tuple[datetime, bool]]:
     finally:
         session.close()
         engine.dispose()
+    return None

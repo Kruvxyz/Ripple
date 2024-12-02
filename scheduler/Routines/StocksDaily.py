@@ -1,5 +1,5 @@
 from RoutineManager import Routine, Task
-from .resources.Stocks.yfinance_functions import get_recommendations, get_stock_daily
+from .resources.Stocks.yfinance_functions import is_traded_today, get_recommendations, get_stock_daily, get_stock_data
 from .resources.Stocks import add_stock_summary, is_stock_updated_today, get_stocks_list
 import logging
 from datetime import datetime, timedelta, timezone
@@ -52,26 +52,32 @@ def trigger() -> bool:
 def task() -> bool:
     all_stocks = get_stocks_list()
     for stock in all_stocks:
-        if not is_stock_updated_today(stock.symbol):
-            recommendations = get_recommendations(stock.symbol).get("recommendations", {})
-            stock_daily = get_stock_daily(stock.symbol)
-            add_stock_summary(
-                stock.symbol, 
-                datetime.now(),
-                p_to_e_ratio=None,
-                market_cap=None,
-                open_price=stock_daily.get("open", None),
-                close_price=stock_daily.get("close", None),
-                high_price=stock_daily.get("high", None),
-                low_price=stock_daily.get("low", None),
-                recommendations_strong_buy=recommendations.get("strongBuy", None),
-                recommendations_buy=recommendations.get("buy", None),
-                recommendations_sell=recommendations.get("sell", None),
-                recommendations_hold=recommendations.get("hold", None),
-                recommendations_strong_sell=recommendations.get("strongSell", None),
-                total_recommendations=None
-            )
-            logger.info(f"Stock summary added for {stock.symbol}: {datetime.now()}")
+        try:
+            if not is_stock_updated_today(stock.symbol) and is_traded_today(stock.symbol):
+                recommendations = get_recommendations(stock.symbol).get("recommendations", {})
+                stock_daily = get_stock_daily(stock.symbol)
+                stock_daily_date = get_stock_data(stock.symbol)
+                add_stock_summary(
+                    stock.symbol, 
+                    datetime.now(),
+                    p_to_e_ratio=stock_daily_date.get("p_to_e_ratio", None),
+                    market_cap=stock_daily_date.get("market_cap", None),
+                    open_price=stock_daily.get("open", None),
+                    close_price=stock_daily.get("close", None),
+                    high_price=stock_daily.get("high", None),
+                    low_price=stock_daily.get("low", None),
+                    recommendations_strong_buy=recommendations.get("strongBuy", None),
+                    recommendations_buy=recommendations.get("buy", None),
+                    recommendations_sell=recommendations.get("sell", None),
+                    recommendations_hold=recommendations.get("hold", None),
+                    recommendations_strong_sell=recommendations.get("strongSell", None),
+                    total_recommendations=recommendations.get("total_recommendations", None)
+                )
+                logger.info(f"Stock summary added for {stock.symbol}: {datetime.now()}")
+            else:
+                logger.info(f"Stock summary already added for {stock.symbol}: {datetime.now()}")
+        except Exception as e:
+            logger.error(f"Error adding stock summary for {stock.symbol} with error: {e}")
 
     return True
 

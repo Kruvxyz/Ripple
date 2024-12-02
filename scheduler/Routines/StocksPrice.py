@@ -14,7 +14,7 @@ def get_stocks_price_task() -> bool:
             price = get_price(stock.symbol).get("price", None)
             if price:
                 add_stock_price(stock.symbol, price)
-                logger.info(f"Stock price added for {stock.symbol} with price {price}")
+                logger.debug(f"Stock price added for {stock.symbol} with price {price}")
             else:
                 logger.error(f"Error getting stock price for {stock.symbol}")
 
@@ -25,8 +25,8 @@ def get_stocks_price_task() -> bool:
     return True
 
 stocks_price_routine = Routine(
-    name="Stocks Price",
+    name="Stocks_Price",
     description="Get the price of all stocks in the database",
     condition_function=is_market_open,
-    task=Task("stocks price task", get_stocks_price_task),
+    task=Task("Stocks_Price_Task", get_stocks_price_task),
 )

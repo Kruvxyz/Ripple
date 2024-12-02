@@ -13,3 +13,4 @@ from .bbc import bbc_routine
 from .StocksInitiation import stocks_db_init_routine
 from .StocksPrice import stocks_price_routine
 from .StocksDaily import stocks_daily_routine
+from .StocksEarnings import stocks_earnings_routine

@@ -19,7 +19,6 @@ class Stock(Base):
     summaries = relationship("StockDataSummary", back_populates="stock")
     prices = relationship("StockPrice", back_populates="stock", order_by="StockPrice.timestamp.desc()")
     earnings = relationship("StockEarnings", back_populates="stock", order_by="StockEarnings.earnings_date.desc()")
-    # price = relationship("StockPrice", back_populates="stock")
 
     @property
     def latest_price(self):
@@ -130,7 +129,7 @@ class StockEarnings(Base):
     earnings_date = Column("earnings_date", DateTime)
     earnings_per_share = Column("earnings_per_share", Float)
     revenue = Column("revenue", Float)
-    link = Column("link", String(300))
+    link = Column("link", String(300)) #FIXME: can be removed?
     is_reported = Column("is_reported", Boolean, default=False)
     created_at = Column("created_at", DateTime, default=datetime.now)
     updated_at = Column("updated_at", DateTime, default=datetime.now, onupdate=datetime.now)
