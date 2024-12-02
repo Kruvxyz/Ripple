@@ -26,12 +26,24 @@ if __name__ == "__main__":
 
     logger.info("Adding routines to RoutineManager")
 
-    from Routines import dummy_routine, test_routine, db_init_routine, ynet_routine
-
-    routine_manager.add_routine(db_init_routine)
-    routine_manager.add_routine(ynet_routine)
+    # Dummy
+    from Routines import dummy_routine, test_routine
     routine_manager.add_routine(dummy_routine)
     routine_manager.add_routine(test_routine)
+
+    # Articles
+    from Routines import article_db_init_routine, ynet_routine, walla_routine, cnn_routine, bbc_routine
+    routine_manager.add_routine(article_db_init_routine)
+    routine_manager.add_routine(ynet_routine)
+    routine_manager.add_routine(walla_routine)
+    routine_manager.add_routine(cnn_routine)
+    routine_manager.add_routine(bbc_routine)
+
+    # Stocks
+    from Routines import stocks_db_init_routine, stocks_price_routine, stocks_daily_routine
+    routine_manager.add_routine(stocks_db_init_routine)
+    routine_manager.add_routine(stocks_price_routine)
+    routine_manager.add_routine(stocks_daily_routine)
 
     logger.info("Starting RoutineManager")
     asyncio.run(routine_manager.start())

@@ -1,6 +1,6 @@
 from bs4 import BeautifulSoup
 import urllib3 
-from .Articles import check_article_exists
+from . import check_article_exists
 import logging
 
 logger = logging.getLogger(__name__)

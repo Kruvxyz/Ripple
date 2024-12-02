@@ -1,5 +1,5 @@
 from RoutineManager import Routine, Task
-from ..bs_functions import check_if_rss_was_updated, get_soup_from_link
+from .bs_functions import check_if_rss_was_updated, get_soup_from_link
 from . import add_article, check_article_exists
 from datetime import datetime
 import logging

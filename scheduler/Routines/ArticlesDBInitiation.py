@@ -1,9 +1,8 @@
 from RoutineManager import Routine, Task
 from .resources.Articles import init_db
-import time
-import random
 
-db_init_routine = Routine(
+
+article_db_init_routine = Routine(
     name="initiate_db",
     description="This routine initiates the articles database. Should run only once.",
     task=Task("initiate_db", init_db),
