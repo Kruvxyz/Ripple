@@ -12,7 +12,7 @@ from shared.Status import CommandStatus
 
 logger = logging.getLogger(__name__)
 
-TIME_TO_SLEEP = 1 # 1 second
+TIME_TO_SLEEP = 60 # 1 second
 
 def singleton(cls):
     instances = {}
@@ -147,6 +147,10 @@ class RoutineManager:
                 if routine.get_status() != get_routine_status(routine.name):
                     logger.info(f"Routine status: {routine.name}, {routine.get_status()}")
                     self.update_routine_status(routine.name, routine.get_status(), routine.get_error())
+                    if routine.get_status() == RoutineStatus.FAIL or routine.get_status() == RoutineStatus.COMPLETE: # or routine.get_status() == RoutineStatus.CANELLED:
+                        # logger.error(f"Routine error: {routine.name}, {routine.get_error()}")
+                        self.routines_map_tasks[routine.name] = None
+                        logger.info(f"Routine {routine.name} cleared due to status error")
 
                 logger.info(f"Routine task status: {routine.name}, {routine.task.status}")
                 routine_task_instance = routine.task.get_instance()
@@ -200,9 +204,6 @@ class RoutineManager:
                 logger.error(f"Unknown command: {command.command}")
 
             update_command_status(command, CommandStatus.DONE)
-
-
-
 
     async def start(self):
         logger.info("Routine Manager: started")
