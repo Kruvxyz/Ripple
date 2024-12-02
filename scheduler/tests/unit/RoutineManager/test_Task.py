@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import MagicMock
-from RoutineManager.Task import Task  # Import the class to be tested
+from scheduler.tests.unit.RoutineManager.test_Task import Task  # Import the class to be tested
 from RoutineManager.Status import TaskInstanceStatus
 
 class TestTask(unittest.TestCase):

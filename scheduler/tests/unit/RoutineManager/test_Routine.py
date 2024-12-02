@@ -13,7 +13,7 @@ class TestRoutine(unittest.TestCase):
         sys.modules["db"] = mock_db
 
     def setUp(self):
-        from RoutineManager.Routine import Routine
+        from scheduler.tests.unit.RoutineManager.test_Routine import Routine
 
         self.INTERVAL = 1
         # self.assertFalse(mock_handler.called)
