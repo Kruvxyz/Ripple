@@ -102,7 +102,7 @@ class StockDataSummary(Base):
 
 
 class StockPrice(Base):
-    __tablename__ = 'stocks_raw'
+    __tablename__ = 'stocks_prices'
     id = Column("id", Integer, primary_key=True)
     stock_id = Column(Integer, ForeignKey('stocks.id'))
     price = Column("price", Float)

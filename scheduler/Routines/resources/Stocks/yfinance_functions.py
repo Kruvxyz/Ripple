@@ -27,7 +27,7 @@ def get_recommendations(symbol: str) -> Dict[str, Dict[Any, Any]]:
     try:
         recommendations = stock.recommendations.to_dict(orient="records")[0]
     except:
-        recommendations = None
+        recommendations = {}
 
     return {
         "recommendations": recommendations
@@ -39,6 +39,7 @@ def get_stock_daily(symbol: str) -> Dict[str, Any]:
     today = datetime(now.year, now.month, now.day)
     yesterday = today - timedelta(days=1)
     # tomorrow = today + timedelta(days=1)
+    return_data = {}
     try:
         data = stock.history(start=yesterday, end=today).iloc[-1,:]
         return_data = {

@@ -169,7 +169,7 @@ def get_stocks_list(active_only: bool = True) -> Iterable[Stock]:
     session = generate_session(engine)
     try:
         if active_only:
-            stocks = session.query(Stock).filter(Stock.is_active == True).all()
+            stocks = session.query(Stock).filter(Stock.status == 'active').all()
         else:
             stocks = session.query(Stock).all()
         return stocks
@@ -198,6 +198,7 @@ def is_stock_updated_today(symbol: str) -> bool:
     finally:
         session.close()
         engine.dispose()
+    return False
 
 def get_stock_last_earning_date(symbol: str) -> Optional[Tuple[datetime, bool]]:
     engine = generate_engine()

@@ -37,13 +37,14 @@ def trigger() -> bool:
     market_close_time_start = now.replace(hour=16, minute=0, second=0, microsecond=0)
     market_close_time_end = now.replace(hour=17, minute=0, second=0, microsecond=0)
 
-    if market_close_time_start <= now < market_close_time_end:
-        
-        all_stocks = get_stocks_list()
-        for stock in all_stocks:
-            if not is_stock_updated_today(stock.symbol):
-                logger.info("StocksDaily | triggered")
-                return True
+    if now.strftime('%A') in ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]:
+        if market_close_time_start <= now < market_close_time_end:
+            all_stocks = get_stocks_list()
+            logger.debug(f"StocksDaily | Checking if stocks are updated for {len(all_stocks)} stocks")
+            for stock in all_stocks:
+                if not is_stock_updated_today(stock.symbol):
+                    logger.info("StocksDaily | triggered")
+                    return True
             
     logger.info("StocksDaily | not triggered")
     return False
@@ -75,8 +76,8 @@ def task() -> bool:
     return True
 
 stocks_daily_routine = Routine(
-    name="Stocks Daily Summary",
+    name="Stocks_Daily_Summary",
     description="Update the daily summary for all stocks",
     condition_function=trigger,
-    task=Task("Stocks daily summary task", task),
+    task=Task("Stocks_Daily_Summary_Task", task),
 )
