@@ -1,5 +1,5 @@
 from RoutineManager import Routine, Task
-from .resources.Stocks.Stock import StockPrice
+# from .resources.Stocks.Stock import StockPrice
 from .resources.Stocks import get_stocks_list, add_stock_price
 from .resources.Stocks.yfinance_functions import is_market_open, get_price
 import logging

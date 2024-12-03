@@ -1,4 +1,4 @@
-from .resources.Articles.routine_factory import gen_routine
+from Routines.resources.Articles.routine_factory import gen_routine
 
 def parsing_function(soup):
     article_title = soup.find('h1', class_='mainTitle').text

@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import MagicMock, patch
-from .MockGetHandler import gen_mock_handlers
+from ..Mocks.MockGetHandler import gen_mock_handlers
 from RoutineManager.Status import RoutineStatus
 import sys
     

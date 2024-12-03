@@ -1,5 +1,5 @@
 from RoutineManager import Routine, Task
-from .resources.Articles import init_db
+from Routines.resources.Articles import init_db
 
 
 article_db_init_routine = Routine(
