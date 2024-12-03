@@ -108,11 +108,12 @@ class StockPrice(Base):
     timestamp = Column("timestamp", DateTime, default=datetime.now)
     created_at = Column("created_at", DateTime, default=datetime.now)
     stock = relationship("Stock", back_populates="prices")
+    
     def __init__(
             self,
             stock_id: int,
             price: float,
-            timestamp: Optional[datetime],
+            timestamp: Optional[datetime] = None,
     ) -> None:
         self.stock_id = stock_id
         self.price = price

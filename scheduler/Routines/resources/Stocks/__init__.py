@@ -77,7 +77,7 @@ def init_db() -> bool:
 def add_stock_price(
         symbol: str,
         price: float,
-        date: Optional[datetime],
+        date: Optional[datetime] = None,
     ) -> None:
     engine = generate_engine()
     session = generate_session(engine)
