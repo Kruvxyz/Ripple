@@ -1,14 +1,15 @@
+from typing import Any, Iterable, Optional
 from RoutineManager import Routine, Task
-# from .resources.Stocks.Stock import StockPrice
-from .resources.Stocks import get_stocks_list, add_stock_price
-from .resources.Stocks.yfinance_functions import is_market_open, get_price
+from Routines.resources.Stocks import get_stocks_list, add_stock_price
+from Routines.resources.Stocks.yfinance_functions import is_market_open, get_price
 import logging
 
 logger = logging.getLogger(__name__)
 
 
-def get_stocks_price_task() -> bool:
-    stocks = get_stocks_list()
+def get_stocks_price_task(stocks : Optional[Iterable[Any]] = None) -> bool:
+    if stocks is None:
+        stocks = get_stocks_list()
     try:
         for stock in stocks:
             price = get_price(stock.symbol).get("price", None)
