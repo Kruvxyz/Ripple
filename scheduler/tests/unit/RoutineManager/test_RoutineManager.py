@@ -31,7 +31,7 @@ class TestRoutineManager(unittest.TestCase):
 
     def setUp(self):
         # Import after mocking
-        from scheduler.tests.unit.RoutineManager.test_RoutineManager import RoutineManager
+        from RoutineManager.RoutineManager import RoutineManager
         self.routine_manager = RoutineManager()
 
     def test_get_routine(self):
