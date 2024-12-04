@@ -7,7 +7,6 @@ from datetime import datetime, timedelta, timezone
 logger = logging.getLogger(__name__)
 
 
-
 def get_current_time_in_et():
     # Get current UTC time
     utc_now = datetime.now(timezone.utc)
@@ -30,7 +29,6 @@ def get_current_time_in_et():
     # Convert current UTC time to ET
     et_now = utc_now.astimezone(et)
     return et_now
-
 
 def trigger() -> bool:
     now = get_current_time_in_et()
