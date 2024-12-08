@@ -1,6 +1,9 @@
 from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, Optional
 import yfinance as yf
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def get_stock_data(symbol: str) -> Dict[str, Dict[Any, Any]]:
@@ -115,17 +118,29 @@ def get_stock_data(symbol: str) -> Dict[str, Optional[float]]:
     
     return return_data
 
-def get_last_earnings(symbol: str) -> Dict[str, Any]:
-    stock = yf.Ticker(symbol)
-    quarterly_financials = stock.quarterly_financials
-    last_reported_date = quarterly_financials.keys()[0]
-    quarterly_income_stmt = stock.quarterly_income_stmt
-    last_reported_net_income = quarterly_income_stmt.keys()[0]
-    assert last_reported_date == last_reported_net_income, "Dates do not match"
-    last_reported_revenue = quarterly_financials[last_reported_date].loc["Total Revenue"]
-    last_reported_eps = quarterly_income_stmt[quarterly_income_stmt.keys()[0]].loc["Diluted EPS"]
+def get_last_earnings(symbol: str, num_retries: int = 5) -> Dict[str, Any]:
+    for i in range(num_retries):
+        try:
+            stock = yf.Ticker(symbol)
+            quarterly_financials = stock.quarterly_financials
+            last_reported_date = quarterly_financials.keys()[0]
+            quarterly_income_stmt = stock.quarterly_income_stmt
+            last_reported_net_income = quarterly_income_stmt.keys()[0]
+            assert last_reported_date == last_reported_net_income, "Dates do not match"
+            logger.info(f"Attempt {i+1}: Fetching last reported revenue and EPS for {symbol}")
+            last_reported_revenue = quarterly_financials[last_reported_date].loc["Total Revenue"]
+            last_reported_eps = quarterly_income_stmt[quarterly_income_stmt.keys()[0]].loc["Diluted EPS"]
+            logger.info(f"Successfully fetched last earnings for {symbol}")
+            return {
+                "success": True,
+                "date": last_reported_date,
+                "revenue": last_reported_revenue,
+                "eps": last_reported_eps
+            }
+        except Exception as e:  
+            logger.error(f"Error getting last earnings for stock with symbol {symbol} on attempt {i+1} with error: {e}")
+            continue
+    logger.error(f"Failed to get last earnings for stock with symbol {symbol} after {num_retries} attempts")
     return {
-        "date": last_reported_date,
-        "revenue": last_reported_revenue,
-        "eps": last_reported_eps
+        "success": False,
     }

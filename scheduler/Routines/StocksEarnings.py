@@ -19,12 +19,13 @@ def trigger_earnings() -> bool:
     now = datetime.now(timezone.utc)
     stocks_list = get_stocks_list()
     for stock in stocks_list:
-        last_earnings = get_last_earnings(stock.symbol).get("date", None)
-        logger.debug(f"StocksEarnings | Checking if stocks are updated for {stock.symbol} with last earnings {last_earnings}")
-        if last_earnings is None:
-            logger.error(f"Error getting last earnings for stock with symbol {stock.symbol}")
+        last_earnings_raw = get_last_earnings(stock.symbol)
+        last_earnings = last_earnings_raw.get("date", None)
+        logger.debug(f"StocksEarnings | Checking if stocks are updated for {stock.symbol} with last earnings {last_earnings_raw}")
+        if not last_earnings_raw.get("success", False) or last_earnings is None:
+            logger.error(f"Failed getting last earnings for stock with symbol {stock.symbol}")
             continue
-        if now.date() <= last_earnings.date() and  last_earnings.date() <= now.date() + timedelta(days=3):
+        if now.date() >= last_earnings.date() and  last_earnings.date() + timedelta(days=3) >= now.date() :
             logger.debug(f"StocksEarnings | triggered for {stock.symbol}")
             if not is_stock_updated_to_date(stock.symbol, last_earnings):
                 logger.info("StocksEarnings | triggered")

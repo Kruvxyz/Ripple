@@ -49,11 +49,18 @@ mock_resources.Articles.routine_factory.gen_routine = MagicMock()
 mock_resources.Stocks = MagicMock()
 mock_resources.Stocks.add_stock_summary = MagicMock(return_value=None)
 mock_resources.Stocks.is_stock_updated_today = MagicMock(return_value=False)
+mock_resources.Stocks.get_stock_last_earning_date = MagicMock(return_value=None)
 mock_resources.Stocks.get_stocks_list = MagicMock(return_value=stocks_list)
 mock_resources.Stocks.add_stock_price = MagicMock(return_value=None)
 mock_resources.Stocks.yfinance_functions = MagicMock()
 mock_resources.Stocks.yfinance_functions.is_market_open = MagicMock(return_value=True)
 mock_resources.Stocks.yfinance_functions.get_price = MagicMock(return_value={"price": 1.0})
+mock_resources.Stocks.yfinance_functions.get_last_earnings = MagicMock(return_value={
+            "date": datetime.today(), 
+            "eps": 1.0,
+            "revenue": 1.0,
+            "success": True
+        })
 mock_resources.Stocks.yfinance_functions.is_traded_today = MagicMock(return_value=True)
 mock_resources.Stocks.yfinance_functions.get_stock_daily = MagicMock(return_value={
             "success": True,
