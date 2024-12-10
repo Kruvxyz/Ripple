@@ -1,6 +1,8 @@
 import React, {useState, useEffect} from 'react';
-import Task from './Task';
 import 'bootstrap-icons/font/bootstrap-icons.css';
+import RoutineTitle from './RoutineTitle';
+import CommandsContainer from './CommandsContainer';
+import StatusContainer from './StatusContainer';
 
 function Routine(props) {
     const [status, setStatus] = useState("");
@@ -49,7 +51,7 @@ function Routine(props) {
     useEffect(()=>{
         const id = setInterval(() => {
             updateStatus();
-        }, 30000);
+        }, 5000);
         return () => clearInterval(id);
 
     },[]);
@@ -61,12 +63,9 @@ function Routine(props) {
 
     return (
         <div className='routine'>
-            <h1 className='routine-header'>{props.name}</h1>
-            <p>{props.description}</p>
-            <div className='routine-status'>{status}</div>
-            <div className='routine-tasks'>{tasks && tasks.map((task)=><Task name={task.name} status={task.status} />)}</div>
-            <i onClick={sendCommand} name="cancel" className="bi bi-pause-circle-fill"></i>
-            <i onClick={sendCommand} name="start" className="bi bi-play-circle-fill"></i>
+            <RoutineTitle name={props.name} />
+            <StatusContainer status={status} tasks={tasks}/>
+            <CommandsContainer sendCommand={sendCommand} />
         </div>
     );
 }

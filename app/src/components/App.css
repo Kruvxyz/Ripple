@@ -7,30 +7,133 @@
 }
 
 .menu{
-  background-color: red;
+  background-color: #beadfa;
+  color: #DDE6ED;
 }
 
+/* Containers */
 .container {
   display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  background-color: yellow;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  background-color: #f6fcf9;
 }
 
+.status-container {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 500px;
+  width: 500px;
+}
+
+/* commands */
+.commands-container {
+  max-width: 140px;
+}
+i.command-icon {
+  font-size: 44px;
+  margin: 0px 10px;
+
+}
+
+/* Routine */
 .routine {
-  background-color: aqua;
-  width: 250px;
-  height: 550px;
-  border-radius: 20px;
-  margin: 10px;
+  background-color: #DFCCFB;
+  width: 100%;
+  height: 90px;
+  border-radius: 0px;
+  margin: 16px 0px;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.routine-title {
+  margin: 0px 10px;
+  width: 300px;
+  max-width: 300px;
 }
 
 .routine-status {
-  background-color: blue;
-  width: 250px;
-  height: 50px;
-  border-radius: 20px;
-  margin: 10px;
+  background-color: #BEADFA;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 244px;
+  height: 44px;
+  border-radius: 22px;
   text-decoration: solid;
   font-size: large;
+  font-weight: bold;
+  position: relative; 
+  left: -46px; /* fixme: calculate it */
+  z-index: 1;
+}
+
+.routine-status_running {
+  background-color: #f8cf2c;
+}
+
+.routine-status_waiting {
+  background-color: #beadfa;
+}
+
+.routine-status_fail {
+  background-color: #ff2768;
+}
+
+/* Task */
+.tasks-container {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  align-items: baseline;
+  max-width: 250px;
+  width: 250px;
+  padding-top: 24px; 
+  gap: 4px;
+}
+
+svg {
+  align-self: top;
+  margin: 0px;
+  border: 0px;
+  padding-top: 12px;
+}
+
+.task {
+  display: flex;
+  flex-direction: row;
+}
+.task-element{
+  z-index:2;
+}
+.task-status {
+  /* text-align: center; */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+}
+.task-status_done {
+  background-color: #86d293;
+  border: 1px solid black;
+}
+
+.task-status_error {
+  background-color: #f95454;
+  border: 1px solid black;
+}
+
+.task-status_running {
+  background-color: #ffcc37;
+  border: 1px solid black;
 }
