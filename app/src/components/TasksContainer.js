@@ -6,7 +6,7 @@ function TasksContainer(props) {
     console.log(last_task);
     return (
         <div className='tasks-container'>
-            {props.tasks && props.tasks.slice(1).map((task)=><TaskElement name={task.name} status={task.status} arrow={true} />)}
+            {props.tasks && props.tasks.slice(1).reverse().map((task)=><TaskElement name={task.name} status={task.status} arrow={true} />)}
             {last_task && <TaskElement name={last_task.name} status={last_task.status} />}
         </div>
     );
