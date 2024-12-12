@@ -16,10 +16,10 @@ def connect_with_retry(db_url, retries=5, delay=2):
             engine = create_engine(db_url)
             # Try connecting
             with engine.connect() as connection:
-                print("Successfully connected to the database!")
+                logger.info("Successfully connected to the database!")
                 return engine
         except exc.OperationalError:
-            print(f"Attempt {i+1} failed. Retrying in {delay} seconds...")
+            logger.info(f"Attempt {i+1} failed. Retrying in {delay} seconds...")
             time.sleep(delay)
     raise Exception("Could not connect to the database after several attempts.")
 
@@ -328,7 +328,7 @@ def update_task_status(
     engine = generate_engine()
     session = generate_session(engine)
     try:
-        logger.info(f"update_task_status : Updating task status for {routine_name} to {new_status}")
+        logger.info(f"update_task_status [{task_id}]: Updating task status for {routine_name} to {new_status}")
         message = Message(
             sender="scheduler", 
             routine=routine_name,
@@ -340,14 +340,15 @@ def update_task_status(
             message.error = error
         session.add(message)
         session.commit()
-        logger.info(f"Updating {routine_name} and task {task_id} with status {new_status} and error {error}")
+        logger.info(f"update_task_status [{task_id}]: Updating {routine_name} and task {task_id} with status {new_status} and error {error}")
         return True
     except SQLAlchemyError as e:
-        logger.error("update_task_status : SQLAlchemyError occurred:", e)
+        logger.error(f"update_task_status [{task_id}]: SQLAlchemyError occurred:", e)
         session.rollback()
     except Exception as e:
-        logger.error(f"update_task_status : Error in updating task status for {routine_name} to status: {new_status} and error {error}: {e}")
+        logger.error(f"update_task_status [{task_id}]: Error in updating task status for {routine_name} to status: {new_status} and error {error}: {e}")
     finally:
+        logger.info(f"update_task_status [{task_id}]: Closing session and disposing engine")
         session.close()
         engine.dispose()
     return False
