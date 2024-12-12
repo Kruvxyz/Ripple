@@ -44,7 +44,7 @@ def generate_engine(retries=5, delay=2):
                 print("Successfully connected to the database!")
                 return engine
         except exc.OperationalError:
-            print(f"Attempt {i+1} failed. Retrying in {delay} seconds...")
+            print(f"[db] Attempt {i+1} failed. Retrying in {delay} seconds...")
             time.sleep(delay)
     raise Exception("Could not connect to the database after several attempts.")
 
@@ -159,94 +159,94 @@ def gen_routine_handlers(routine_name: str) -> Tuple[
     
     def update_status(status: str) -> None:
         try:
-            logger.info(f"update_status: Updating status of {routine_name} to {status}")
+            logger.info(f"Routine [{routine_name}] update_status: Updating status of {routine_name} to {status}")
             routine = get_routine()
-            logger.info(f"update_status: Updating status | Routine: {routine} with status {routine.status}")
+            logger.info(f"Routine [{routine_name}] update_status: Updating status | Routine: {routine} with status {routine.status}")
             routine.status = status
             routine.error = ""
             routine.updated_at = datetime.now()
             session.commit()
-            logger.info(f"update_status | Updated status of {routine_name} to {status}")
+            logger.info(f"Routine [{routine_name}] update_status | Updated status of {routine_name} to {status}")
         except SQLAlchemyError as e:
-            logger.error("update_status | SQLAlchemyError occurred:", e)
+            logger.error(f"Routine [{routine_name}] update_status | SQLAlchemyError occurred:", e)
             session.rollback()
         except Exception as e:
-            logger.error("update_status | Error occurred:", e)
+            logger.error(f"Routine [{routine_name}] update_status | Error occurred:", e)
 
     def update_error(error: str) -> None:
         try:  
-            logger.info(f"update_error: Updating error of {routine_name} to {error}")
+            logger.info(f"Routine [{routine_name}] update_error: Updating error of {routine_name} to {error}")
             routine = get_routine()
-            logger.info(f"update_error: Updating error | Routine: {routine} with status {routine.status} and error {routine.error}")
+            logger.info(f"Routine [{routine_name}] update_error: Updating error | Routine: {routine} with status {routine.status} and error {routine.error}")
             routine.status = RoutineStatus.ERROR
             routine.error = error
             routine.updated_at = datetime.now()
             session.commit()
-            logger.info(f"update_error | Updated error of {routine_name} to {error}")
+            logger.info(f"Routine [{routine_name}] update_error | Updated error of {routine_name} to {error}")
         except SQLAlchemyError as e:
-            logger.error("update_error | SQLAlchemyError occurred:", e)
+            logger.error(f"Routine [{routine_name}] update_error | SQLAlchemyError occurred:", e)
             session.rollback()
         except Exception as e:
-            logger.error("update_error | Error occurred:", e)
+            logger.error(f"Routine [{routine_name}] update_error | Error occurred:", e)
 
     def create_new_task() -> Optional[Task]:
         try:
-            logger.info(f"create_new_task: Creating new task for {routine_name}")
+            logger.info(f"Routine [{routine_name}] create_new_task: Creating new task for {routine_name}")
             routine = get_routine()
-            logger.info(f"create_new_task: Creating new task | Routine: {routine} with status {routine.status}")
+            logger.info(f"Routine [{routine_name}] create_new_task: Creating new task | Routine: {routine} with status {routine.status}")
             task = Task(routine=routine)
             session.add(task)
             session.commit()
-            logger.info(f"create_new_task | Created new task for {routine_name}")
+            logger.info(f"Routine [{routine_name}] create_new_task | Created new task for {routine_name}")
             return task
         except SQLAlchemyError as e:
-            logger.error("create_new_task | SQLAlchemyError occurred:", e)
+            logger.error(f"Routine [{routine_name}] create_new_task | SQLAlchemyError occurred:", e)
             session.rollback()
         except Exception as e: 
-            logger.error("create_new_task | Error occurred:", e)
+            logger.error(f"Routine [{routine_name}] create_new_task | Error occurred:", e)
         return None
     
     def gen_task_handlers(task: Task):
         def update_task_status(status: str) -> None:
             try:
-                logger.info(f"update_task_status: Updating status of task {task.id} to {status}")
+                logger.info(f"[Task {task.id}] update_task_status | Updating status of task {task.id} to {status}")
                 task.updated_at = datetime.now()
                 task.status = status
                 session.commit()
-                logger.info(f"update_task_status | Updated status of task {task.id} to {status}")
+                logger.info(f"[Task {task.id}] update_task_status | Updated status of task {task.id} to {status}")
             except SQLAlchemyError as e:
-                logger.error("update_task_status | SQLAlchemyError occurred:", e)
+                logger.error(f"[Task {task.id}] update_task_status | SQLAlchemyError occurred:", e)
                 session.rollback()
             except Exception as e:
-                logger.error("update_task_status | Error occurred:", e)
+                logger.error(f"[Task {task.id}] update_task_status | Error occurred:", e)
 
         def update_task_error(error: str) -> None:
             try:
-                logger.info(f"update_task_error: Updating error of task {task.id} to {error}")
+                logger.info(f"[Task {task.id}] update_task_error: Updating error of task {task.id} to {error}")
                 task.updated_at = datetime.now()
                 task.error = error
                 task.status = TaskInstanceStatus.ERROR
                 session.commit()
-                logger.info(f"update_task_error | Updated error of task {task.id} to {error}")
+                logger.info(f"[Task {task.id}] update_task_error | Updated error of task {task.id} to {error}")
             except SQLAlchemyError as e:
-                logger.error("update_task_error | SQLAlchemyError occurred:", e)
+                logger.error(f"[Task {task.id}] update_task_error | SQLAlchemyError occurred:", e)
                 session.rollback()
             except Exception as e:
-                logger.error("update_task_error | Error occurred:", e)
+                logger.error(f"[Task {task.id}] update_task_error | Error occurred:", e)
 
         def update_task_completed() -> None:
             try:
-                logger.info(f"update_task_completed: Updating task {task.id} to completed")
+                logger.info(f"[Task {task.id}] update_task_completed: Updating task {task.id} to completed")
                 task.updated_at = datetime.now()
                 task.completed_at = datetime.now()
                 task.status = TaskInstanceStatus.DONE
                 session.commit()
-                logger.info(f"update_task_completed | Updated task {task.id} to completed")
+                logger.info(f"[Task {task.id}] update_task_completed | Updated task {task.id} to completed")
             except SQLAlchemyError as e:
-                logger.error("update_task_completed | SQLAlchemyError occurred:", e)
+                logger.error(f"[Task {task.id}] update_task_completed | SQLAlchemyError occurred:", e)
                 session.rollback()
             except Exception as e:
-                logger.error("update_task_completed | Error occurred:", e)
+                logger.error(f"[Task {task.id}] update_task_completed | Error occurred:", e)
 
         return update_task_status, update_task_error, update_task_completed
 
