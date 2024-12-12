@@ -84,4 +84,5 @@ stocks_daily_routine = Routine(
     description="Update the daily summary for all stocks",
     condition_function=trigger,
     task=Task("Stocks_Daily_Summary_Task", task),
+    timeout_limit=60*60*24,
 )

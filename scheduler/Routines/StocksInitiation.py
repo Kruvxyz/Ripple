@@ -9,5 +9,6 @@ stocks_db_init_routine = Routine(
     condition_function=lambda: True,
     retry_delay=60,
     retry_limit=5,
-    run_once=True
+    run_once=True,
+    timeout_limit=60*60*24,
 )

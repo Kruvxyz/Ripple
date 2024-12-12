@@ -30,4 +30,5 @@ stocks_price_routine = Routine(
     description="Get the price of all stocks in the database",
     condition_function=is_market_open,
     task=Task("Stocks_Price_Task", get_stocks_price_task),
+    timeout_limit=60*60*24,
 )

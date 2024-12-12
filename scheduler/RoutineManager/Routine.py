@@ -8,6 +8,7 @@ import logging
 from db import gen_routine_handlers, reattach_routine
 from .Status import RoutineStatus, TaskInstanceStatus 
 from .Task import Task
+
 logger = logging.getLogger(__name__)
 
 
@@ -265,7 +266,6 @@ class Routine:
                     logger.error("Retry limit reached for the routine")
                     return None
 
-                print(f"Error running function with error: {e}")
                 logger.error(f"Error running function with error: {e}")
                 self.num_retries += 1
                 await asyncio.sleep(self.retry_delay)
