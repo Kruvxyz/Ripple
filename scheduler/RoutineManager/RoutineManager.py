@@ -12,7 +12,7 @@ from shared.Status import CommandStatus
 
 logger = logging.getLogger(__name__)
 
-TIME_TO_SLEEP = 60 # 1 second
+TIME_TO_SLEEP = 1 # FIXME: consider to reduce the time
 
 def singleton(cls):
     instances = {}
@@ -138,72 +138,89 @@ class RoutineManager:
         It runs in an infinite loop, periodically checking the status of routines and processing new commands.
         """
         logger.info("Routine Manager: Main coroutine")
-        while True:
-            logger.info("Routine Manager: Main coroutine loop")
+        try:
+            while True:
+                logger.info("Routine Manager: Main coroutine loop")
 
-            logger.info("Routine Manager: Push commands")
-            for routine in self.routines:
-                logger.info(f"Routine status: {routine.name}, {routine.get_status()} {get_routine_status(routine.name)}")
-                if routine.get_status() != get_routine_status(routine.name):
-                    logger.info(f"Routine status: {routine.name}, {routine.get_status()}")
-                    self.update_routine_status(routine.name, routine.get_status(), routine.get_error())
-                    if routine.get_status() == RoutineStatus.FAIL or routine.get_status() == RoutineStatus.COMPLETE: # or routine.get_status() == RoutineStatus.CANELLED:
-                        # logger.error(f"Routine error: {routine.name}, {routine.get_error()}")
-                        self.routines_map_tasks[routine.name] = None
-                        logger.info(f"Routine {routine.name} cleared due to status error")
+                logger.info("Routine Manager: Push commands")
+                for routine in self.routines:
+                    logger.info(f"Routine status: {routine.name}, {routine.get_status()} {get_routine_status(routine.name)}")
+                    if routine.get_status() != get_routine_status(routine.name):
+                        logger.info(f"Routine status: {routine.name}, {routine.get_status()}")
+                        self.update_routine_status(routine.name, routine.get_status(), routine.get_error())
+                        if routine.get_status() == RoutineStatus.FAIL or routine.get_status() == RoutineStatus.COMPLETE: # or routine.get_status() == RoutineStatus.CANELLED:
+                            # logger.error(f"Routine error: {routine.name}, {routine.get_error()}")
+                            self.routines_map_tasks[routine.name] = None
+                            logger.info(f"Routine {routine.name} cleared due to status error")
 
-                logger.info(f"Routine task status: {routine.name}, {routine.task.status}")
-                routine_task_instance = routine.task.get_instance()
-                logger.info(f"Routine task instance: {routine.name}, {routine_task_instance}")
-                if routine_task_instance is not None:
-                    last_task = get_task(routine.name, routine_task_instance.id)
-                    latest_task_status = None if not last_task else last_task.status
-                    if latest_task_status is None or latest_task_status != routine_task_instance.status:
-                        logger.info(f"Task status update: {routine.name}, {routine_task_instance}")
-                        update_task_status(routine.name, routine_task_instance.id, routine_task_instance.status, routine_task_instance.error)
+                    logger.info(f"Routine task status: {routine.name}, {routine.task.status}")
+                    routine_task_instance = routine.task.get_instance()
+                    logger.info(f"Routine task instance: {routine.name}, {routine_task_instance}")
+                    if routine_task_instance is not None:
+                        last_task = get_task(routine.name, routine_task_instance.id)
+                        latest_task_status = None if not last_task else last_task.status
+                        if latest_task_status is None or latest_task_status != routine_task_instance.status:
+                            logger.info(f"Task status update: {routine.name}, {routine_task_instance}")
+                            update_task_status(routine.name, routine_task_instance.id, routine_task_instance.status, routine_task_instance.error)
 
-            logger.info("Routine Manager: Get commands")
-            command = get_latest_pending_command()
-            logger.info(f"command : {command}")
-            if command is None:
-                logger.info("No new command")
-                await asyncio.sleep(TIME_TO_SLEEP)
-                continue
+                logger.info("Routine Manager: Get commands")
+                command = get_latest_pending_command()
+                logger.info(f"command : {command}")
+                if command is None:
+                    logger.info("No new command")
+                    await asyncio.sleep(TIME_TO_SLEEP)
+                    continue
 
-            if command.routine not in [routine.name for routine in self.routines]:
-                logger.error(f"fail to find routine: {command.routine} in routines: {[routine.name for routine in self.routines]}")
-                update_command_status(command, CommandStatus.ERROR_UNKNOWN_ROUTINE)
+                if command.routine not in [routine.name for routine in self.routines]:
+                    logger.error(f"fail to find routine: {command.routine} in routines: {[routine.name for routine in self.routines]}")
+                    update_command_status(command, CommandStatus.ERROR_UNKNOWN_ROUTINE)
 
-            logger.info(f"Routine Manager: {command.routine}, {command.command}")
-            routine = self.get_routine(command.routine)
+                logger.info(f"Routine Manager: {command.routine}, {command.command}")
+                routine = self.get_routine(command.routine)
 
-            # Handle unknown routine or command
-            if routine is None or command.command not in ["start", "cancel"]: #, "execute"]:
-                logger.error(f"Unknown routine or command: {command.routine}, {command.command}")
+                # Handle unknown routine or command
+                if routine is None or command.command not in ["start", "cancel"]: #, "execute"]:
+                    logger.error(f"Unknown routine or command: {command.routine}, {command.command}")
+                    update_command_status(command, CommandStatus.DONE)
+                    logger.error("Task done")
+                    continue
+
+                # Handle the command
+                update_command_status(command, CommandStatus.RUNNING)
+                if command.command == "start": # or command == "restart":
+                    logger.info(f"Starting routine: {command.routine}")
+                    await self.start_routine(command.routine)
+                                        
+                elif command.command == "cancel":
+                    logger.info(f"Cancelling routine: {command.routine}")
+                    await self.cancel_routine(command.routine)
+
+                # TODO: Implement execute command
+                # elif command == "execute":
+                #     logger.info(f"Executing routine: {routine_name}")
+                #     await self.cancel_routine(routine_name)
+                #     self.routines_map_tasks[routine_name] = asyncio.create_task(routine.execute())
+                    
+                else:
+                    logger.error(f"Unknown command: {command.command}")
+
                 update_command_status(command, CommandStatus.DONE)
-                logger.error("Task done")
-                continue
 
-            # Handle the command
-            update_command_status(command, CommandStatus.RUNNING)
-            if command.command == "start": # or command == "restart":
-                logger.info(f"Starting routine: {command.routine}")
-                await self.start_routine(command.routine)
-                                    
-            elif command.command == "cancel":
-                logger.info(f"Cancelling routine: {command.routine}")
-                await self.cancel_routine(command.routine)
+        # Restart machenism for the main coroutine
+        except Exception as e:
+            logger.error(f"Routine Manager: Main coroutine failed with error: {e}")
+            await self.cancel_routines()
+            logger.info("Routine Manager: Main coroutine cancelled all routines")
+            logger.info("Try to restart the main coroutine")
+            await self.start()
 
-            # TODO: Implement execute command
-            # elif command == "execute":
-            #     logger.info(f"Executing routine: {routine_name}")
-            #     await self.cancel_routine(routine_name)
-            #     self.routines_map_tasks[routine_name] = asyncio.create_task(routine.execute())
-                
-            else:
-                logger.error(f"Unknown command: {command.command}")
-
-            update_command_status(command, CommandStatus.DONE)
+    async def cancel_routines(self):
+        logger.info(f"Routine Manager: Cancel routines")
+        for routine in self.routines:
+            try:
+                await self.cancel_routine(routine.name)
+            except Exception as e:
+                logger.error(f"Routine Manager: Failed to cancel routine: {routine.name} with error: {e}")
 
     async def start(self):
         logger.info("Routine Manager: started")
