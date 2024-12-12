@@ -32,7 +32,7 @@ function Routine(props) {
     const sendCommand = (event) => {
         console.log(event.target.getAttribute('name'));
 
-        fetch(`${process.env.REACT_APP_SERVER_ADDRESS}/routine/command`, requestCommand(event.target.getAttribute('name')))
+        fetch(`${process.env.REACT_APP_BE_ADDRESS}/routine/command`, requestCommand(event.target.getAttribute('name')))
         .then(response => response.json())
         .then(response => {
             console.log(response)
@@ -40,7 +40,7 @@ function Routine(props) {
     }
 
     const updateStatus = () => {
-        fetch(`${process.env.REACT_APP_SERVER_ADDRESS}/routine/status`, requestStatus)
+        fetch(`${process.env.REACT_APP_BE_ADDRESS}/routine/status`, requestStatus)
         .then(response => response.json())
         .then(response => {
             console.log(response)

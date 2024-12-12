@@ -2,7 +2,6 @@ import React, {useState, useEffect} from 'react';
 import './App.css';
 import Menu from './Menu';
 import Container from './Container';
-import Routine from './Routine';
 
 
 function App() {
@@ -14,7 +13,7 @@ function App() {
   }
 
   const getList = () => {
-    fetch(`${process.env.REACT_APP_SERVER_ADDRESS}/routine/list`, requestList)
+    fetch(`${process.env.REACT_APP_BE_ADDRESS}/routine/list`, requestList)
     .then(response => response.json())
     .then(response => {
       console.log(response)
