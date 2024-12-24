@@ -15,6 +15,11 @@ services:
       - MYSQL_REMOTE_DATABASE=queue_db
       - MYSQL_REMOTE_USER=mysql_user
       - MYSQL_REMOTE_PASSWORD=securepassword
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     depends_on:
       - scheduler
       - message_queue_db
@@ -43,6 +48,11 @@ services:
       - MYSQL_ARTICLES_DATABASE=storage_db
       - MYSQL_ARTICLES_USER=admin
       - MYSQL_ARTICLES_PASSWORD=securepassword
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     depends_on:
       - scheduler_db
       - message_queue_db
