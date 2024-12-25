@@ -138,9 +138,9 @@ def get_last_earnings(symbol: str, num_retries: int = 5) -> Dict[str, Any]:
                 "eps": last_reported_eps
             }
         except Exception as e:  
-            logger.error(f"Error getting last earnings for stock with symbol {symbol} on attempt {i+1} with error: {e}")
+            logger.warning(f"Error getting last earnings for stock with symbol {symbol} on attempt {i+1} with error: {e}")
             continue
-    logger.error(f"Failed to get last earnings for stock with symbol {symbol} after {num_retries} attempts")
+    logger.warning(f"Failed to get last earnings for stock with symbol {symbol} after {num_retries} attempts")
     return {
         "success": False,
     }

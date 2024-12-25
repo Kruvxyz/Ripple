@@ -42,7 +42,7 @@ def task_earnings() -> bool:
             last_earnings_eps = last_earnings.get("eps", None)
             last_earnings_revenue = last_earnings.get("revenue", None)
             if last_earnings_date is None:
-                logger.error(f"Error getting last earnings for stock with symbol {stock.symbol}")
+                logger.warning(f"Error getting last earnings for stock with symbol {stock.symbol}")
                 continue
             if not is_stock_updated_to_date(stock.symbol, last_earnings_date):
                 add_stock_earnings(
