@@ -23,7 +23,7 @@ def trigger_earnings() -> bool:
         last_earnings = last_earnings_raw.get("date", None)
         logger.debug(f"StocksEarnings | Checking if stocks are updated for {stock.symbol} with last earnings {last_earnings_raw}")
         if not last_earnings_raw.get("success", False) or last_earnings is None:
-            logger.error(f"Failed getting last earnings for stock with symbol {stock.symbol}")
+            logger.warning(f"Failed getting last earnings for stock with symbol {stock.symbol}")
             continue
         if now.date() >= last_earnings.date() and  last_earnings.date() + timedelta(days=3) >= now.date() :
             logger.debug(f"StocksEarnings | triggered for {stock.symbol}")
