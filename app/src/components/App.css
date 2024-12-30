@@ -123,6 +123,11 @@ svg {
   width: 44px;
   height: 44px;
 }
+
+.task-status_ready {
+  background-color: #eb9138;
+  border: 1px solid black;
+}
 .task-status_done {
   background-color: #86d293;
   border: 1px solid black;
