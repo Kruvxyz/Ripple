@@ -30,7 +30,7 @@ def routine_command():
     logger.info(f"Received command: {data}")
 
     # Validate the command
-    valid_commands = ["start", "cancel"] #, "execute"]
+    valid_commands = ["start", "cancel", "execute"]
     if data.get("command","None") not in valid_commands:
         return jsonify({
             "status": "error",

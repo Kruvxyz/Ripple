@@ -6,6 +6,7 @@ function CommandsContainer(props) {
         <div className="commands-container">
             <i onClick={props.sendCommand} name="cancel" className="bi bi-pause-circle-fill command-icon"></i>
             <i onClick={props.sendCommand} name="start" className="bi bi-play-circle-fill command-icon"></i>
+            <i onClick={props.sendCommand} name="execute" className="bi bi-fast-forward-circle-fill command-icon"></i>
         </div>
     );
 }
