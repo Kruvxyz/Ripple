@@ -1,4 +1,4 @@
-from RoutineManager import Routine, Task
+from RoutineManager import Routine, Task, Trigger
 from .bs_functions import check_if_rss_was_updated, get_soup_from_link
 from . import add_article, check_article_exists
 from datetime import datetime
@@ -75,7 +75,10 @@ def gen_routine(
         description=f"This routine scrapes {decorated_source} news",
         task=task,
         interval=60,
-        condition_function=lambda: check_if_rss_was_updated(rss_url, source),
+        trigger=Trigger(
+            name=f"{decorated_source}_trigger",
+            function=lambda: check_if_rss_was_updated(rss_url, source)
+        ),
         retry_delay=60,
         retry_limit=5
     )

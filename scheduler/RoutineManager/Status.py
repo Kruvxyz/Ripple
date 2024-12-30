@@ -16,4 +16,13 @@ class TaskInstanceStatus:
     RUNNING = "running"
     DONE = "done"
     ERROR = "error"
+    CANCELLED = "cancelled"
     UNKNOWN = "unknown"
+
+class TriggerInstanceStatus:
+    PENDING = "pending"
+    RUNNING = "running"
+    DONE = "done"
+    ERROR = "error"
+    CANCELLED = "cancelled"
+

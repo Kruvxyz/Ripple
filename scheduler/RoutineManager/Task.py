@@ -1,12 +1,13 @@
 from collections.abc import Callable
-import random
 from typing import Optional
+from .Executor import Executor
 from .Status import TaskInstanceStatus
+import asyncio
 import logging
 
 logger = logging.getLogger(__name__)
 
-class Task:
+class Task(Executor):
     def __init__(
             self,
             name: str,
@@ -17,6 +18,7 @@ class Task:
         self.status = TaskInstanceStatus.PENDING
         self.is_set = False
         self.id = None
+        self.job = None
         self.task_db_instance = None
         self.update_task_status = None
         self.update_task_error = None
@@ -44,27 +46,48 @@ class Task:
             self.update_task_error(error)
             logger.error(f"Task {self.id} : Task error updated")
 
-    def run(self) -> bool:
+    def is_busy(self) -> bool:
+        if self.job is not None:
+            return not self.job.done()
+        return False
+    
+    async def cancel(self) -> bool:
+        if self.is_busy():
+            self.job.cancel()
+            await self.job
+        self.status = TaskInstanceStatus.CANCELLED
+        self.job = None
+        return True
+
+    async def get_result(self) -> bool:
+        try:
+            result = await self.job
+            logger.debug(f"Trigger {self.name} : Trigger result is {result}")
+            if result:
+                self._set_completed()
+            else:
+                self._set_error("Task failed")
+            return result
+        except Exception as e:
+            self._set_error(f"task {self.name}:{self.id} failed with error:\n{e}")
+            logger.warning(f"Trigger {self.name} : Trigger failed with error {e}")
+            self.status = TaskInstanceStatus.ERROR
+            raise e
+        
+    async def run(self) -> bool:
         # Validate task before running
         if self.function is None:
             raise ValueError("Task function is not set")
         if not self.is_set:
             raise ValueError("Task is not set")
-                
+        if self.is_busy():
+            raise ValueError("Task is busy")    
+                    
         # Execute task
-        try:
-            self._set_status(TaskInstanceStatus.RUNNING)
-            task_result = self.function()
-            logger.debug(f"Task {self.id} : Task executed with result {task_result}")
-            if task_result:
-                self._set_completed()
-            else:
-                self._set_error("Task failed")
-            return task_result
-        
-        except Exception as e:
-            self._set_error(f"task {self.name}:{self.id} failed with error:\n{e}")
-            return False
+        self._set_status(TaskInstanceStatus.RUNNING)
+        self.job = asyncio.create_task(self.async_function())
+        logger.debug(f"Task {self.id} : Task executing")
+        return True       
         
     def set(self, task_db_instance, gen_handlers, fuctnion: Optional[Callable[[], bool]]=None):
         if fuctnion is not None:

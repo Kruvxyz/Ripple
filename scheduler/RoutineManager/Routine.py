@@ -6,7 +6,8 @@ from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, TimeoutE
 import time
 import logging
 from db import gen_routine_handlers, reattach_routine
-from .Status import RoutineStatus, TaskInstanceStatus 
+from .Trigger import Trigger
+from .Status import RoutineStatus, TaskInstanceStatus, TriggerInstanceStatus 
 from .Task import Task
 
 logger = logging.getLogger(__name__)
@@ -43,9 +44,8 @@ class Routine:
             name: str, 
             description: str, 
             task: Task, 
+            trigger: Trigger,
             interval: int = 60, 
-            condition_function:Optional[Callable[[], bool]] = None,
-            condition_function_args: Optional[str] = None,
             retry_delay: int = 5*60, # default 5 minutes
             retry_limit: int = 5, # default 5 retries
             timeout_limit: int = 60*60, # default 1 hour
@@ -55,8 +55,8 @@ class Routine:
         self.name = name
         self.description = description
         self.task = task
+        self.trigger = trigger
         self.interval = interval
-        self.condition_function = condition_function
         self.retry_delay = retry_delay
         self.retry_limit = retry_limit
         self.timeout_limit = timeout_limit
@@ -71,219 +71,101 @@ class Routine:
 
         # State
         self.num_retries = 0
-        if run_once:
-            self.executed_first_time = False
 
         # Update DB
         self.routine = self.gen_routine(description)       
 
-    def calculate_sleep_preiod(self) -> int:
-        return self.interval
-
-    def get_status(self) -> Optional[str]:
-        logger.info(f"Routine {self.name} : Getting status for routine")
-        if self.routine is not None:
-            try:
-                logger.info(f"Routine {self.name} : Routine status object: {self.routine}")
-                return self.routine.status
-            except ResourceClosedError:
-                logger.error(f"Routine {self.name} : Error getting status - ResourceClosedError")
-                self.session.rollback()
-                self.session, self.routine = reattach_routine(self.routine)
-                return self.routine.status
-            except Exception as e:
-                logger.error(f"Routine {self.name} : Error getting status: {e}")
-                self.session.rollback()
-                self.session, self.routine = reattach_routine(self.routine)
-                return self.routine.status
-        return None
-    
     def get_task_status(self) -> Optional[str]:
-        #TODO: implement
-        pass
-
-    def get_error(self) -> Optional[str]:
-        logger.info(f"Routine {self.name} : Getting error for routine")
-        if self.routine is not None:
-            try:
-                logger.info(f"Routine {self.name} : Routine error object: {self.routine}")
-                return self.routine.error
-            except ResourceClosedError:
-                self.session.rollback()
-                self.session, self.routine = reattach_routine(self.routine)
-                return self.routine.error
-        return None
-
-    def set_status(self, status: RoutineStatus) -> None:
-        if status not in vars(RoutineStatus).values():
-            raise ValueError(f"Routine {self.name} : Invalid status {status}")
-        logger.info(f"Routine {self.name} : Setting status for routine. Current {self.status} next status {status}")
-        self.status = status
-        self.update_status(status)
-        logger.debug(f"Routine {self.name} : Status set to {status}")
+        if self.task is not None:
+            return self.task.status
         return None
     
-    def set_error(self, error: str) -> None:
-        logger.info(f"Routine {self.name} : Setting error for routine. Current {self.status} next error {error}")
-        self.status = RoutineStatus.ERROR
-        self.update_error(error)
-        logger.debug(f"Routine {self.name} : Error set to {error}")
+    def get_task_id(self) -> Optional[int]:
+        if self.current_task_db_instance is not None:
+            return self.current_task_db_instance.id
         return None
     
-    async def run(self) -> None:
-        logger.debug(f"Routine {self.name}: Routine run")
-        logger.debug(f"Routine started: {self.name} / pre loop")
-        self.set_status(RoutineStatus.WAITING)
+    async def step(self) -> bool:
+        logger.debug(f"Routine {self.name}: step")
 
-        # trigger validation
-        logger.info(f"Routine {self.name} : Checking trigger")
-        if self.condition_function is None:
-            logger.error(f"Routine {self.name}: CONDITION FUNCTION NOT SET")
-            self.update_error("Condition function not set")
-            return None
+        # WAITING
+        # Next steps: [PENDING]
+        if self.status == RoutineStatus.WAITING:
+            logger.debug(f"Routine {self.name} : Waiting for condition to be met")
+            if self.trigger.status == TriggerInstanceStatus.RUNNING:
+                if not self.trigger.is_busy():
+                    try:
+                        result = await self.trigger.get_result()
+                        if result:
+                            self.status = RoutineStatus.PENDING
+                    except Exception as e:
+                        logger.warning(f"Routine {self.name} : trigger exception {e}")
+            else:
+                await self.trigger.run()
+
+        # PENDING / RETRY
+        # Nex steps: [RUNNING]
+        elif self.status == RoutineStatus.PENDING or self.status == RoutineStatus.RETRY:
+            logger.info(f"Routine {self.name} : Preparing task")
+            self.set_new_task()
+            self.status = RoutineStatus.RUNNING
         
-        while True:
-            try:
-                logger.debug(f"Routine {self.name}: loop")
-                
-                # WAITING
-                # Next steps: [PENDING]
-                if self.status == RoutineStatus.WAITING:
-                    logger.debug(f"Routine {self.name} : Waiting for condition to be met")
-                    if self.condition_function():
-                        self.set_status(RoutineStatus.PENDING)
-
-                    else:
-                        logger.debug(f"Routine {self.name} : Condition not met")
-                        await asyncio.sleep(self.calculate_sleep_preiod())
-
-                # PENDING / RETRY
-                # Nex steps: [RUNNING]
-                elif self.status == RoutineStatus.PENDING or self.status == RoutineStatus.RETRY:
-                    logger.info(f"Routine {self.name} : Preparing task")
-                    self.set_new_task()
-                    self.set_status(RoutineStatus.RUNNING)
-                
-                # RUNNING
-                # Next steps: [DONE, ERROR, RETRY]
-                elif self.status == RoutineStatus.RUNNING:
-                    logger.info(f"Routine {self.name} : Running task")
-                    result = await self.run_and_wait_task_at_thread_pool_executor()
-                    logger.info(f"Routine {self.name} : task completed with result: {result}")
-                    # FIXME: use DB status instead of result
-                    if result is True:
-                        self.executed_first_time = True
-                        if self.run_once and self.executed_first_time:
-                            self.set_status(RoutineStatus.COMPLETE)
+        # RUNNING
+        # Next steps: [DONE, ERROR, COMPLETE]
+        elif self.status == RoutineStatus.RUNNING:
+            logger.info(f"Routine {self.name} : Running task")
+            if self.task.status == TaskInstanceStatus.RUNNING:
+                if not self.task.is_busy():
+                    try:
+                        result = await self.task.get_result()
+                        if result:
+                            if self.run_once:
+                                self.status = RoutineStatus.COMPLETE
+                            else:
+                                self.status = RoutineStatus.DONE
                         else:
-                            self.set_status(RoutineStatus.DONE)
-                    else:
-                        self.set_status(RoutineStatus.ERROR)
-                        self.num_retries += 1
-
-                # DONE
-                # Next steps: [WAITING]
-                elif self.status == RoutineStatus.DONE:
-                    logger.info(f"Routine {self.name}: Done")
-                    self.release_task()
-                    self.num_retries = 0
-                    await asyncio.sleep(self.calculate_sleep_preiod())
-                    self.set_status(RoutineStatus.WAITING)
-
-                # ERROR
-                # Next steps: [RETRY, FAIL]
-                elif self.status == RoutineStatus.ERROR:
-                    logger.info(f"Routine {self.name}: Error")
-                    self.release_task()
-                    if self.num_retries >= self.retry_limit:
-                        # self.update_error("Retry limit reached for the routine")
-                        logger.error("Retry limit reached for the routine")
-                        self.set_status(RoutineStatus.FAIL)
-                    else:
-                        self.set_status(RoutineStatus.RETRY)
-                    await asyncio.sleep(self.retry_delay)
-
-                # FAIL
-                # Next steps: [None]
-                elif self.status == RoutineStatus.FAIL:
-                    logger.info(f"Routine {self.name}: Fail")
-                    return None
+                            self.status = RoutineStatus.ERROR
+                            self.num_retries += 1
+                    except Exception as e:
+                        logger.warning(f"Routine {self.name} : task exception {e}")
+            else:
+                await self.task.run()
                 
-                
-                # COMPLETE
-                # Next steps: [None]
-                elif self.status == RoutineStatus.COMPLETE:
-                    self.release_task()
-                    logger.info("Routine {self.name} : Run once routine completed")
-                    return None
+        # DONE
+        # Next steps: [WAITING]
+        elif self.status == RoutineStatus.DONE:
+            logger.info(f"Routine {self.name}: Done")
+            self.release_task()
+            self.num_retries = 0
+            self.status = RoutineStatus.WAITING
 
-                # # CANCELED - setting this state is from outside the main loop
-                # # Next steps: [None]
-                # elif self.status == RoutineStatus.CANCELED:
-                #     self.release_task()
-                #     logger.info(f"Routine {self.name}: Canceled")
-                #     return None
+        # ERROR
+        # Next steps: [RETRY, FAIL]
+        elif self.status == RoutineStatus.ERROR:
+            logger.info(f"Routine {self.name}: Error")
+            self.release_task()
+            if self.num_retries >= self.retry_limit:
+                logger.error("Retry limit reached for the routine")
+                self.status = RoutineStatus.FAIL
+            else:
+                self.status = RoutineStatus.RETRY
 
+        # FAIL
+        # Next steps: [None]
+        elif self.status == RoutineStatus.FAIL:
+            logger.info(f"Routine {self.name}: Fail")
+            return False
+        
+        # COMPLETE
+        # Next steps: [None]
+        elif self.status == RoutineStatus.COMPLETE:
+            self.release_task()
+            logger.info("Routine {self.name} : Run once routine completed")
+            return True
 
-                # FIXME - integrate in state RUNNING
-                # logger.info(f"Routine {self.name} : Checking task status and update routine status if needed")
-                # if self.current_task_db_instance is not None:
-                #     self.session.refresh(self.current_task_db_instance)
-                #     if self.current_task_db_instance.status == TaskInstanceStatus.RUNNING:
-                #         logger.debug(f"Routine {self.name} : Task is running")
-                #         await asyncio.sleep(1) #FIXME: remove magic number
-
-                #     elif self.current_task_db_instance.status == TaskInstanceStatus.ERROR:
-                #         logger.debug(f"Routine {self.name} : Task raised error")
-                #         # Routine raised error -> stop routine
-                #         self.num_retries += 1
-                #         self.update_status(RoutineStatus.RETRYING)
-                #         self.update_error("Task failed to complete")
-                #         self.release_task()
-                #         return None
-
-                #     elif self.current_task_db_instance.status == TaskInstanceStatus.DONE:
-                #         logger.debug(f"Routine {self.name} : Task completed")
-                #         self.release_task()
-                #         self.update_status(RoutineStatus.WAITING)
-                #         self.num_retries = 0
-                #         if self.run_once and self.executed_first_time:
-                #             self.release_task()
-                #             logger.info("Routine {self.name} : Run once routine completed")
-                #             self.update_status(RoutineStatus.COMPLETE)
-                #             return None
-
-                #     else:
-                #         self.release_task()
-                #         self.update_status(RoutineStatus.WAITING)
-                #         self.num_retries = 0
-
-
-
-            except Exception as e:
-                if self.num_retries >= self.retry_limit:
-                    self.update_error("Retry limit reached for the routine")
-                    logger.error("Retry limit reached for the routine")
-                    return None
-
-                logger.error(f"Error running function with error: {e}")
-                self.num_retries += 1
-                await asyncio.sleep(self.retry_delay)
-                continue
-
-            except asyncio.CancelledError:
-                self.update_status(RoutineStatus.CANCELED)
-                print("Cancelled with asyncio.CancelledError")
-                logger.info("Cancelled with asyncio.CancelledError")
-                break
-
-            except asyncio.exceptions.CancelledError:
-                self.update_status(RoutineStatus.CANCELED)
-                print("Cancelled with asyncio.CancelledError")
-                logger.info("Cancelled with asyncio.exceptions.CancelledError")
-                break
-
-        logger.info(f"Routine finished: {self.name}")
+        elif self.status == RoutineStatus.CANCELED:
+            logger.info(f"Routine {self.name}: Canceled")
+            return False
 
     def set_new_task(self):
         #TODO: cleanup
@@ -294,20 +176,24 @@ class Routine:
         self.task.set(self.current_task_db_instance, self.gen_task_handlers)
         logger.info(f"Routine {self.name} : Task set")
 
-    def release_task(self):
+    def release_task(self):  
         self.current_task_db_instance = None
         self.task.release()
 
-    async def run_and_wait_task_at_thread_pool_executor(self):
-        try:
-            loop = asyncio.get_running_loop()
-            executor = ThreadPoolExecutor()
-            future = loop.run_in_executor(executor, self.task.run)
-            result = await asyncio.wait_for(future, timeout=self.timeout_limit) 
-            return result
+    async def cancel(self) -> None:
+        if self.status == RoutineStatus.RUNNING:
+            await self.task.cancel()
+        if self.status == RoutineStatus.PENDING:
+            await self.trigger.cancel()
+        self.release_task() #FIXME: check if this is needed
+        self.status = RoutineStatus.CANCELED
+        logger.info(f"Routine {self.name} : Canceled")
 
-        # TODO: there is nothing really happen when timeout error occurs. Therefore we should not be waiting for that
-        except asyncio.TimeoutError: 
-            future.cancel()
-            print("Task timed out and will be cancelled.")
-        
+    async def start(self) -> None:
+        if self.status == RoutineStatus.CANCELED:
+            self.status = RoutineStatus.WAITING
+
+    async def execute(self) -> None:
+        if self.status != RoutineStatus.RUNNING:
+            self.status = RoutineStatus.PENDING
+            self.trigger.cancel()
