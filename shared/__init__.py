@@ -165,7 +165,7 @@ def get_routine_status(routine_name: str) -> Optional[str]:
     session = generate_session(engine)
     try:
         logger.info(f"get_routine_status : Getting status for {routine_name}")
-        message = session.query(Message).filter(Message.sender == "scheduler", Message.routine == routine_name).order_by(Message.timestamp.desc()).first()
+        message = session.query(Message).filter(Message.sender == "scheduler", Message.routine == routine_name, Message.command=="status").order_by(Message.timestamp.desc()).first()
         logger.info(f"get_routine_status : Got status for {routine_name}: {message}")
         if message:
             return message.status
