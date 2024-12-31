@@ -1,4 +1,4 @@
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from typing import Optional
 from .Executor import Executor
 from .Status import TaskInstanceStatus
@@ -11,10 +11,12 @@ class Task(Executor):
     def __init__(
             self,
             name: str,
-            function: Optional[Callable[[], None]] = None,         
+            function: Optional[Callable[[], bool]] = None,         
+            async_function: Optional[Callable[[], Awaitable[bool]]] = None, 
         ) -> None:
         self.name = name
-        self.function = function
+        self.is_async_function = async_function is not None
+        self.function = async_function if self.is_async_function else function
         self.status = TaskInstanceStatus.PENDING
         self.is_set = False
         self.id = None
@@ -85,7 +87,10 @@ class Task(Executor):
                     
         # Execute task
         self._set_status(TaskInstanceStatus.RUNNING)
-        self.job = asyncio.create_task(self.async_function())
+        if self.is_async_function:
+            self.job = asyncio.create_task(self.function())
+        else:
+            self.job = asyncio.create_task(self.async_function())
         logger.debug(f"Task {self.id} : Task executing")
         return True       
         

@@ -1,4 +1,4 @@
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from typing import Optional
 from .Executor import Executor
 from .Status import TriggerInstanceStatus
@@ -12,9 +12,11 @@ class Trigger(Executor):
             self,
             name: str,
             function: Optional[Callable[[], bool]] = None,
+            async_function: Optional[Callable[[], Awaitable[bool]]] = None, 
     ) -> None:
         self.name = name
-        self.function = function
+        self.is_async_function = async_function is not None
+        self.function = async_function if self.is_async_function else function
         self.status = TriggerInstanceStatus.PENDING
         self.job = None
 
@@ -50,7 +52,10 @@ class Trigger(Executor):
             raise ValueError("Trigger is busy")
         
         # Execute trigger
-        self.job = asyncio.create_task(self.async_function())
+        if self.is_async_function:
+            self.job = asyncio.create_task(self.function())
+        else:
+            self.job = asyncio.create_task(self.async_function())
         self.status = TriggerInstanceStatus.RUNNING
         logger.debug(f"Trigger {self.name} : Trigger executing asynchoronously")
         return True

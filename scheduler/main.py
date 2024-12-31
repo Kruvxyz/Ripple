@@ -40,11 +40,11 @@ if __name__ == "__main__":
     routine_manager.add_routine(bbc_routine)
 
     # Stocks
-    # from Routines import stocks_db_init_routine, stocks_price_routine, stocks_daily_routine, stocks_earnings_routine
-    # routine_manager.add_routine(stocks_db_init_routine)
-    # routine_manager.add_routine(stocks_price_routine)
-    # routine_manager.add_routine(stocks_daily_routine)
-    # routine_manager.add_routine(stocks_earnings_routine)
+    from Routines import stocks_db_init_routine, stocks_price_routine, stocks_daily_routine, stocks_earnings_routine
+    # routine_manager.add_routine(stocks_db_init_routine) # Blocking routine
+    routine_manager.add_routine(stocks_price_routine)
+    routine_manager.add_routine(stocks_daily_routine)
+    routine_manager.add_routine(stocks_earnings_routine)
 
     logger.info("Starting RoutineManager")
     asyncio.run(routine_manager.main_coroutine())

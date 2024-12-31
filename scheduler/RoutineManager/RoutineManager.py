@@ -13,7 +13,7 @@ from shared.Status import CommandStatus
 
 logger = logging.getLogger(__name__)
 
-TIME_TO_SLEEP = 1 # FIXME: consider to reduce the time
+TIME_TO_SLEEP = 10 # FIXME: consider to reduce the time
 
 def singleton(cls):
     instances = {}
