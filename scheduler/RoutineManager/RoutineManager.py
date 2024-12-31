@@ -47,7 +47,7 @@ class RoutineManager:
         
         self.routines.append(routine)
         logger.info(f"self.routines: {self.routines}")
-        self.status_updater.routine_status_updater(routine.name, RoutineStatus.PENDING)
+        self.status_updater.routine_status_updater(routine.name, RoutineStatus.WAITING)
         
     def get_routine(self, routine_name: str) -> Optional[Routine]:
         logger.info(f"Routine Manager: get routine {routine_name}")
