@@ -1,7 +1,9 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS, cross_origin
 import logging
-from shared import send_command, Message, get_latest_pending_command, update_command_status, get_routine_status, get_routine_list, get_tasks, get_task_status
+import threading
+from logic import send_message_to_scheduler, get_routines_list, get_state, handle_message
+from rabbitMQ import receive_message_callback
 import sys
 
 # Set logger configuration
@@ -13,6 +15,11 @@ logging.basicConfig(
     )
 
 logger = logging.getLogger(__name__)
+
+# Set rabbitMQ callback
+channel = receive_message_callback("status_updates", handle_message)
+receive_messages_thread = threading.Thread(target=channel.start_consuming)
+receive_messages_thread.start()
 
 # Set flask app and cors
 app = Flask(__name__)
@@ -38,51 +45,57 @@ def routine_command():
         })
     
     # Validate the routine
-
-    # Add the command to the queue
-    res = send_command(data.get("routine_name", "None"), data.get("command", "None"))
-    if res:
+    if data.get("routine_name", None) not in get_routines_list():
+        return jsonify({
+            "status": "error",
+            "error": "Invalid routine"
+        })
+    
+    # send command to the queue
+    try:
+        res = send_message_to_scheduler(data.get("command", "None"), data.get("routine_name", "None"))
         return jsonify({
             "status": "ok"
         })
-    else:
-        return jsonify({
-            "status": "error",
-            "error": "Failed to send command"
-        })
-
-@app.route("/routine/get_command", methods=["POST"])
-@cross_origin(origins="http://localhost")
-def get_command():
-    try:
-        logger.info("Getting latest message")
-        # message = session.query(Message).filter(Message.sender == "flask").order_by(Message.timestamp.desc()).first()
-        message = get_latest_pending_command()
-        if message is None:
-            return jsonify({
-                "status": "error",
-                "error": "no pending command"
-            })
-        # session.delete(message)
-        # session.commit()
-        # update_command_status(message, "executing")
-        return jsonify({
-            "routine": message.routine, 
-            "command": message.command,
-            "status": message.status,
-            })
     except Exception as e:
         logger.error(e)
         return jsonify({
             "status": "error",
             "error": str(e)
         })
+
+# @app.route("/routine/get_command", methods=["POST"])
+# @cross_origin(origins="http://localhost")
+# def get_command():
+#     try:
+#         logger.info("Getting latest message")
+#         # message = session.query(Message).filter(Message.sender == "flask").order_by(Message.timestamp.desc()).first()
+#         message = get_latest_pending_command()
+#         if message is None:
+#             return jsonify({
+#                 "status": "error",
+#                 "error": "no pending command"
+#             })
+#         # session.delete(message)
+#         # session.commit()
+#         # update_command_status(message, "executing")
+#         return jsonify({
+#             "routine": message.routine, 
+#             "command": message.command,
+#             "status": message.status,
+#             })
+#     except Exception as e:
+#         logger.error(e)
+#         return jsonify({
+#             "status": "error",
+#             "error": str(e)
+#         })
     
 @app.route("/routine/list", methods=["POST"])
 @cross_origin(origins="http://localhost")
 def routine_list():
     try:
-        return jsonify({"list": get_routine_list(),
+        return jsonify({"list": get_routines_list(),
                     "status": "ok"})
     except Exception as e:
         logger.error(e)
@@ -95,14 +108,18 @@ def routine_list():
 def routine_status():
     num_tasks = request.json.get("num_tasks", 5)
     routine_name = request.json.get("routine_name","")
-    tasks = get_tasks(routine_name)
+    routine_state = get_state(routine_name)
+
+    tasks = routine_state.get("tasks", {})
     logger.info(f"Getting status for routine {routine_name} with {num_tasks} tasks: {tasks}")
+    sorted_tasks_list = [{
+            "name": task,
+            "status": tasks.get(task, {}).get("status", None),
+        } for task in tasks]
+    sorted_tasks_list.sort(key=lambda x: x["name"], reverse=True)
     return jsonify({
-        "status": get_routine_status(routine_name),
-        "tasks": [{
-            "name": message.response,
-            "status": message.status
-        } for message in tasks],
+        "status": routine_state.get("status", None),
+        "tasks": sorted_tasks_list,
     })
 
 # Run server if the script is run directly

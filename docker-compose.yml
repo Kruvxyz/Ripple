@@ -5,16 +5,12 @@ services:
     build: ./server  # Path to server Dockerfile
     ports:
       - "5050:5050"
-    volumes:
-      - ./shared:/app/shared
     environment:
       - DONT_USE_DOT_ENV=1
       - FLASK_ENV=development
-      # Remote MySQL
-      - MYSQL_REMOTE_HOST=message_queue_db
-      - MYSQL_REMOTE_DATABASE=queue_db
-      - MYSQL_REMOTE_USER=mysql_user
-      - MYSQL_REMOTE_PASSWORD=securepassword
+      # RabbitMQ
+      - RABBITMQ_USER=user
+      - RABBITMQ_PASS=password
     logging:
       driver: "json-file"
       options:
@@ -22,14 +18,12 @@ services:
         max-file: "3"
     depends_on:
       - scheduler
-      - message_queue_db
+      - rabbitmq
     networks:
       - app-network
 
   scheduler:
     build: ./scheduler  # Path to server Dockerfile
-    volumes:
-      - ./shared:/app/shared
     environment:
       - DONT_USE_DOT_ENV=1
       - FLASK_ENV=development
@@ -38,16 +32,14 @@ services:
       - MYSQL_DATABASE=scheduler_db
       - MYSQL_USER=scheduler_user
       - MYSQL_PASSWORD=securepassword
-      # Remote MySQL
-      - MYSQL_REMOTE_HOST=message_queue_db
-      - MYSQL_REMOTE_DATABASE=queue_db
-      - MYSQL_REMOTE_USER=mysql_user
-      - MYSQL_REMOTE_PASSWORD=securepassword
       # articles MySQL
       - MYSQL_ARTICLES_HOST=REMOTE_HOST:3306
       - MYSQL_ARTICLES_DATABASE=storage_db
       - MYSQL_ARTICLES_USER=admin
       - MYSQL_ARTICLES_PASSWORD=securepassword
+      # RabbitMQ
+      - RABBITMQ_USER=user
+      - RABBITMQ_PASS=password
     logging:
       driver: "json-file"
       options:
@@ -55,7 +47,7 @@ services:
         max-file: "3"
     depends_on:
       - scheduler_db
-      - message_queue_db
+      - rabbitmq
     networks:
       - app-network
 
@@ -84,23 +76,30 @@ services:
     networks:
       - app-network
 
-  message_queue_db:
-    image: mysql:8.0 
-    restart: always
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      # - "5672:5672"   # RabbitMQ messaging port
+      - "15672:15672" # RabbitMQ management UI port
     environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: queue_db
-      MYSQL_USER: mysql_user
-      MYSQL_PASSWORD: securepassword
+      RABBITMQ_DEFAULT_USER: user
+      RABBITMQ_DEFAULT_PASS: password
     volumes:
-      - message_queue_datadrive:/var/lib/mysql
+      - rabbitmq_data:/var/lib/rabbitmq
     networks:
       - app-network
-
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      
 networks:
   app-network:
     driver: bridge
 
 volumes:
+  rabbitmq_data:
   scheduler_datadrive:
-  message_queue_datadrive:
+

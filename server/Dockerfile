@@ -8,11 +8,14 @@ WORKDIR /app
 COPY . /app
 
 # Install system dependencies required for mysqlclient
-RUN apt-get update \
+RUN apt-get update --allow-releaseinfo-change \
+    && apt-get install -y --no-install-recommends gnupg dirmngr \
+    && apt-get install -y debian-archive-keyring \
+    && apt-get update \
     && apt-get upgrade -y \
     && apt-get install -y gcc default-libmysqlclient-dev pkg-config \
     && rm -rf /var/lib/apt/lists/*
-
+    
 # Install any needed packages specified in requirements.txt
 RUN pip install -r requirements.txt
 

@@ -1,15 +1,12 @@
 import asyncio
 from collections.abc import Callable
-from shared import Message, get_latest_pending_command, update_routine_status, update_command_status, get_routine_status, update_task_status, get_task
-# from Routine import Routine
-# from routines.system.routines_managment import gen_routines_managment_routine
 import logging
 from typing import Any, Dict, Optional, List
 from db import init_db
 from .Routine import Routine
 from .Status import RoutineStatus
 from .StatusUpdater import StatusUpdater
-from shared.Status import CommandStatus
+from .CommandService import CommandService
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +32,7 @@ class RoutineManager:
         self.routines: List[Routine] = []
         self.routines_map_tasks: List[asyncio.Task[None]] = {}
         self.status_updater = StatusUpdater()
+        self.command_service = CommandService()
 
         init_db()
 
@@ -78,42 +76,39 @@ class RoutineManager:
                 await routine.step()
 
             logger.info("Routine Manager: Get commands")
-            command = get_latest_pending_command()
-            logger.info(f"command : {command}")
-            if command is None:
+            raw_command = self.command_service.get_commands()
+            logger.info(f"command : {raw_command}")
+            if raw_command is None:
                 logger.info("No new command")
                 await asyncio.sleep(TIME_TO_SLEEP)
                 logger.info("done sleeping")
                 continue
 
-            if command.routine not in [routine.name for routine in self.routines]:
-                logger.warning(f"fail to find routine: {command.routine} in routines: {[routine.name for routine in self.routines]}")
-                update_command_status(command, CommandStatus.ERROR_UNKNOWN_ROUTINE)
+            routine = raw_command.get("routine", None)
+            command = raw_command.get("command", None)
+            if routine not in [routine.name for routine in self.routines]:
+                logger.warning(f"fail to find routine: {routine} in routines: {[routine.name for routine in self.routines]}")
 
-            logger.info(f"Routine Manager: {command.routine}, {command.command}")
-            routine = self.get_routine(command.routine)
+            logger.info(f"Routine Manager: {routine}, {command}")
+            routine = self.get_routine(routine)
             # Handle unknown routine or command
             if routine is None:
-                logger.error(f"Unknown routine or command: {command.routine}, {command.command}")
-                update_command_status(command, CommandStatus.DONE)
-                logger.error("Task done")
+                logger.warning(f"Unknown routine or command: {routine}, {command}")
                 continue
 
             # Handle the command
-            update_command_status(command, CommandStatus.RUNNING)
-            if command.command == "start":
-                logger.info(f"Starting routine: {command.routine}")
+            if command == "start":
+                logger.info(f"Starting routine: {routine}")
                 await routine.start()
                                     
-            elif command.command == "cancel":
-                logger.info(f"Cancelling routine: {command.routine}")
+            elif command == "cancel":
+                logger.info(f"Cancelling routine: {routine}")
                 await routine.cancel()
 
-            elif command.command == "execute":
-                logger.info(f"Executing routine: {command.routine}")
+            elif command == "execute":
+                logger.info(f"Executing routine: {routine}")
                 await routine.execute()
                 
             else:
-                logger.warning(f"Unknown command: {command.command}")
+                logger.warning(f"Unknown command: {command}")
 
-            update_command_status(command, CommandStatus.DONE)

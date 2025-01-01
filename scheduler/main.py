@@ -4,7 +4,6 @@ import sys
 from RoutineManager.RoutineManager import RoutineManager
 from RoutineManager.Routine import Routine
 from RoutineManager.Task import Task
-from shared import init_queue_db
 
 # Set logger configuration
 logging.basicConfig(
@@ -18,9 +17,6 @@ logger = logging.getLogger(__name__)
 logger.info("Logger configured successfully")
 
 if __name__ == "__main__":
-    logger.info("Initializing DB")
-    init_queue_db()
-
     logger.info("Starting RoutineManager")
     routine_manager = RoutineManager()
 
