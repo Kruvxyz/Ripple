@@ -10,7 +10,7 @@ from .CommandService import CommandService
 
 logger = logging.getLogger(__name__)
 
-TIME_TO_SLEEP = 10 # FIXME: consider to reduce the time
+TIME_TO_SLEEP = 5 # FIXME: consider to reduce the time
 
 def singleton(cls):
     instances = {}
@@ -33,7 +33,6 @@ class RoutineManager:
         self.routines_map_tasks: List[asyncio.Task[None]] = {}
         self.status_updater = StatusUpdater()
         self.command_service = CommandService()
-
         init_db()
 
     def add_routine(self, routine: Routine) -> bool:
@@ -71,12 +70,11 @@ class RoutineManager:
                 logger.debug(f"Routine Manager {routine.name}: Update statuses")
                 self.status_updater.routine_status_updater(routine.name, routine.status)
                 self.status_updater.task_status_updater(routine.name, routine.task.status, routine.task.id)
-
                 logger.debug(f"Routine status: {routine.name}: step ")
                 await routine.step()
 
             logger.info("Routine Manager: Get commands")
-            raw_command = self.command_service.get_commands()
+            raw_command, ack_message = self.command_service.get_commands()
             logger.info(f"command : {raw_command}")
             if raw_command is None:
                 logger.info("No new command")
@@ -94,6 +92,7 @@ class RoutineManager:
             # Handle unknown routine or command
             if routine is None:
                 logger.warning(f"Unknown routine or command: {routine}, {command}")
+                ack_message()
                 continue
 
             # Handle the command
@@ -112,3 +111,4 @@ class RoutineManager:
             else:
                 logger.warning(f"Unknown command: {command}")
 
+            ack_message()
