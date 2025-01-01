@@ -54,10 +54,17 @@ def generate_session(engine: Engine):
     return Session()
 
 def init_db() -> None:
-    engine = generate_engine()
-    Routine.metadata.create_all(engine)
-    Task.metadata.create_all(engine)
-    engine.dispose()
+    for i in range(5):
+        try:
+            engine = generate_engine()
+            Routine.metadata.create_all(engine)
+            Task.metadata.create_all(engine)
+            engine.dispose()
+            return
+        except exc.OperationalError:
+            logger.debug(f"Attempt {i+1} failed. Retrying in 5 seconds...")
+            time.sleep(5)
+    raise Exception("Could not connect to the database after several attempts.")
 
 def get_routine(name: str) -> Optional[Routine]:
     engine = generate_engine()
