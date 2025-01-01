@@ -55,8 +55,11 @@ class Task(Executor):
     
     async def cancel(self) -> bool:
         if self.is_busy():
-            self.job.cancel()
-            await self.job
+            try:
+                self.job.cancel()
+                await self.job  # This will raise CancelledError if the task was canceled
+            except asyncio.CancelledError:
+                logger.debug(f"Task {self.id} was successfully canceled.")
         self.status = TaskInstanceStatus.CANCELLED
         self.job = None
         return True
