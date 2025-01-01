@@ -54,6 +54,7 @@ def handle_message(ch, method, _properties, body: bytes):
                 logger.debug(f"handle_message | Ignoring outdated message for routine {routine}")
                 return
             routine_state["status"] = status
+            routine_state["epoch"] = epoch
             routines[routine] = routine_state
             logger.debug(f"handle_message | Routine {routine} status updated to {status}")
 
