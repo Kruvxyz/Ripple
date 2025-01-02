@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS, cross_origin
 import logging
 import threading
-from logic import send_message_to_scheduler, get_routines_list, get_state, handle_message
+from logic import send_message_to_scheduler, handle_message, Logic 
 from rabbitMQ import receive_message_callback
 import sys
 
@@ -25,6 +25,8 @@ receive_messages_thread.start()
 app = Flask(__name__)
 cors = CORS(app)
 
+logic = Logic()
+
 @app.route("/ping", methods=["GET", "POST"])
 @cross_origin(origins="http://localhost")
 def ping():
@@ -45,7 +47,7 @@ def routine_command():
         })
     
     # Validate the routine
-    if data.get("routine_name", None) not in get_routines_list():
+    if data.get("routine_name", None) not in logic.get_routines_list():
         return jsonify({
             "status": "error",
             "error": "Invalid routine"
@@ -95,7 +97,7 @@ def routine_command():
 @cross_origin(origins="http://localhost")
 def routine_list():
     try:
-        return jsonify({"list": get_routines_list(),
+        return jsonify({"list": logic.get_routines_list(),
                     "status": "ok"})
     except Exception as e:
         logger.error(e)
@@ -108,7 +110,7 @@ def routine_list():
 def routine_status():
     num_tasks = request.json.get("num_tasks", 5)
     routine_name = request.json.get("routine_name","")
-    routine_state = get_state(routine_name)
+    routine_state = logic.get_state(routine_name)
 
     tasks = routine_state.get("tasks", {})
     logger.info(f"Getting status for routine {routine_name} with {num_tasks} tasks: {tasks}")
