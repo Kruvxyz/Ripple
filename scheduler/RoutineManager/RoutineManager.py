@@ -4,7 +4,7 @@ import logging
 from typing import Any, Dict, Optional, List
 from db import init_db
 from .Routine import Routine
-from .Status import RoutineStatus
+from .Status import RoutineStatus, TaskInstanceStatus
 from .StatusUpdater import StatusUpdater
 from .CommandService import CommandService
 
@@ -68,8 +68,10 @@ class RoutineManager:
 
             for routine in self.routines:
                 logger.debug(f"Routine Manager {routine.name}: Update statuses")
-                self.status_updater.routine_status_updater(routine.name, routine.status)
                 self.status_updater.task_status_updater(routine.name, routine.task.status, routine.task.id)
+                self.status_updater.routine_status_updater(routine.name, routine.status)
+                if routine.task.status in [TaskInstanceStatus.DONE, TaskInstanceStatus.ERROR, TaskInstanceStatus.CANCELLED, TaskInstanceStatus.UNKNOWN]:
+                    routine.allow_release_task()
                 logger.debug(f"Routine status: {routine.name}: step ")
                 await routine.step()
 

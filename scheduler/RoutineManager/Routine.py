@@ -62,6 +62,7 @@ class Routine:
         self.timeout_limit = timeout_limit
         self.run_once = run_once
         self.status = RoutineStatus.WAITING
+        self.can_release_task = False
 
         # Handlers
         if gen_handler is None:
@@ -96,8 +97,12 @@ class Routine:
                 if not self.trigger.is_busy():
                     try:
                         result = await self.trigger.get_result()
-                        if result:
+                        if result and self.current_task_db_instance is None:
                             self.status = RoutineStatus.PENDING
+                            logger.debug(f"Routine {self.name} : Trigger met")
+                        if self.current_task_db_instance is not None and self.can_release_task:
+                            self.release_task()
+                            logger.debug(f"Routine {self.name} : Task released")
                     except Exception as e:
                         logger.warning(f"Routine {self.name} : trigger exception {e}")
             else:
@@ -107,8 +112,9 @@ class Routine:
         # Nex steps: [RUNNING]
         elif self.status == RoutineStatus.PENDING or self.status == RoutineStatus.RETRY:
             logger.info(f"Routine {self.name} : Preparing task")
-            self.set_new_task()
-            self.status = RoutineStatus.RUNNING
+            if self.set_new_task():
+                logger.debug(f"Routine {self.name} : Task set")
+                self.status = RoutineStatus.RUNNING
         
         # RUNNING
         # Next steps: [DONE, ERROR, COMPLETE]
@@ -135,7 +141,6 @@ class Routine:
         # Next steps: [WAITING]
         elif self.status == RoutineStatus.DONE:
             logger.info(f"Routine {self.name}: Done")
-            self.release_task()
             self.num_retries = 0
             self.status = RoutineStatus.WAITING
 
@@ -143,7 +148,6 @@ class Routine:
         # Next steps: [RETRY, FAIL]
         elif self.status == RoutineStatus.ERROR:
             logger.info(f"Routine {self.name}: Error")
-            self.release_task()
             if self.num_retries >= self.retry_limit:
                 logger.error("Retry limit reached for the routine")
                 self.status = RoutineStatus.FAIL
@@ -159,7 +163,6 @@ class Routine:
         # COMPLETE
         # Next steps: [None]
         elif self.status == RoutineStatus.COMPLETE:
-            self.release_task()
             logger.info("Routine {self.name} : Run once routine completed")
             return True
 
@@ -167,14 +170,25 @@ class Routine:
             logger.info(f"Routine {self.name}: Canceled")
             return False
 
-    def set_new_task(self):
+    def allow_release_task(self) -> None:
+        self.can_release_task = True
+    
+    def set_new_task(self) -> bool:
         #TODO: cleanup
         logger.info(f"Routine {self.name} : Setting new task")
         self.current_task_db_instance = self.create_new_task()
+        if self.current_task_db_instance is None:
+            return False
         logger.info(f"Routine {self.name} : Task created: {self.current_task_db_instance}")
         ## gen task handlers
-        self.task.set(self.current_task_db_instance, self.gen_task_handlers)
+        try:
+            self.task.set(self.current_task_db_instance, self.gen_task_handlers)
+        except Exception as e:
+            logger.warning(f"Routine {self.name} : Error setting task: {e}")
+            return False
+        self.can_release_task = False
         logger.info(f"Routine {self.name} : Task set")
+        return True
 
     def release_task(self):  
         self.current_task_db_instance = None
@@ -185,7 +199,7 @@ class Routine:
             await self.task.cancel()
         if self.status == RoutineStatus.PENDING:
             await self.trigger.cancel()
-        self.release_task() #FIXME: check if this is needed
+        self.allow_release_task()
         self.status = RoutineStatus.CANCELED
         logger.info(f"Routine {self.name} : Canceled")
 
